@@ -49,7 +49,7 @@ type User struct {
 	Age               *int        `json:"age"`
 	Image             *string     `json:"image"`
 	Username          *string     `gorm:"unique" json:"username"`
-	DepartmentID      *string     `json:"departmentId"`
+	DepartmentID      *string     `gorm:"type:char(36)" json:"departmentId"`
 	LevelID           *int        `json:"levelId"`
 	Semester          *int        `json:"semester"`
 	IsActive          bool        `gorm:"default:true" json:"isActive"`
@@ -82,21 +82,15 @@ type Faculty struct {
 // - FacultyID: Foreign key to Faculty.
 // - Faculty: Many-to-one relationship with Faculty.
 // - Users: One-to-many relationship with User.
-// - CourseIDs: Array of strings for many-to-many relationship with Course. GORM requires a join table for true many-to-many relationships
-//   or you can manage the join table manually in the application layer. Here, we'll keep it as a slice as per your schema,
-//   but note that GORM might not automatically manage this array as a direct many-to-many without a join table definition.
 // - Course: Many-to-many relationship with Course, explicitly handled by GORM using `gorm:"many2many:department_courses;"` if a join table were desired.
-//   However, given the `courseIDs` field in Department and `departmentIDs` in Course, we represent this as two one-to-many relationships
-//   with the IDs being stored as arrays, which is typical for MongoDB, but less direct for relational databases. For PostgreSQL,
-//   a join table `DepartmentCourses` would be more idiomatic for a many-to-many relationship. For demonstration purposes,
+//   For PostgreSQL, a join table `DepartmentCourses` would be more idiomatic for a many-to-many relationship. For demonstration purposes,
 //   I'm keeping `CourseIDs` as a string array, implying manual handling of the join.
 type Department struct {
-	ID        string   `gorm:"primaryKey;column:_id" json:"id"`
+	ID        string   `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
 	Title     string   `gorm:"unique" json:"title"`
 	FacultyID int      `json:"facultyId"`
 	Faculty   Faculty  `gorm:"foreignKey:FacultyID" json:"faculty"`
 	Users     []User   `gorm:"foreignKey:DepartmentID" json:"users"`
-	CourseIDs []string `gorm:"type:text[]" json:"courseIds"` // Representing MongoDB array of ObjectIds as string array in PostgreSQL
 	Course    []Course `gorm:"many2many:department_courses;" json:"course"` // GORM will create a join table 'department_courses'
 }
 
@@ -117,7 +111,7 @@ type Level struct {
 // - StartDate/EndDate: Nullable DateTime fields become *time.Time.
 // - Questions: One-to-many relationship with Question.
 type Session struct {
-	ID        string    `gorm:"primaryKey;column:_id" json:"id"`
+	ID        string    `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
 	StartDate *time.Time `json:"startDate"`
 	EndDate   *time.Time `json:"endDate"`
 	Info      *string    `json:"info"`
@@ -136,12 +130,12 @@ type Session struct {
 // - CreatedAt/UpdatedAt: Automatically managed timestamps.
 // - Course/Session/Uploader: Many-to-one relationships.
 type Question struct {
-	ID          string       `gorm:"primaryKey;column:_id" json:"id"`
-	CourseID    string       `json:"courseId"`
+	ID          string       `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
+	CourseID    string       `gorm:"type:char(36)" json:"courseId"`
 	Course      Course       `gorm:"foreignKey:CourseID" json:"course"`
-	SessionID   string       `json:"sessionId"`
+	SessionID   string       `gorm:"type:char(36)" json:"sessionId"`
 	Session     Session      `gorm:"foreignKey:SessionID" json:"session"`
-	ImageLinks  []string     `gorm:"type:text[]" json:"imageLinks"`
+	ImageLinks  []string     `gorm:"type:json" json:"imageLinks"`
 	Lecturer    *string      `json:"lecturer"`
 	TimeAllowed *int         `json:"timeAllowed"`
 	DocLink     *string      `json:"docLink"`
@@ -150,7 +144,7 @@ type Question struct {
 	Downloads   *int         `json:"downloads"`
 	Views       *int         `json:"views"`
 	Approved    bool         `gorm:"default:false" json:"approved"`
-	UploaderID  *string      `json:"uploaderId"`
+	UploaderID  *string      `gorm:"type:char(36)" json:"uploaderId"`
 	Uploader    *User        `gorm:"foreignKey:UploaderID" json:"uploader"`
 	CreatedAt   time.Time    `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt   time.Time    `gorm:"autoUpdateTime" json:"updatedAt"`
@@ -165,10 +159,9 @@ type Question struct {
 // - CreatedAt/UpdatedAt: Automatically managed timestamps.
 // - Level: Many-to-one relationship with Level.
 // - Questions: One-to-many relationship with Question.
-// - DepartmentIDs: Array of strings, similar to Department's CourseIDs, for manual many-to-many handling or for PostgreSQL array type.
 // - Departments: Many-to-many relationship, using a join table.
 type Course struct {
-	ID            string       `gorm:"primaryKey;column:_id" json:"id"`
+	ID            string       `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
 	Units         int          `json:"units"`
 	Title         string       `json:"title"`
 	LevelID       int          `json:"levelId"`
@@ -179,6 +172,5 @@ type Course struct {
 	UpdatedAt     time.Time    `gorm:"autoUpdateTime" json:"updatedAt"`
 	Level         Level        `gorm:"foreignKey:LevelID" json:"level"`
 	Questions     []Question   `gorm:"foreignKey:CourseID" json:"questions"`
-	DepartmentIDs []string     `gorm:"type:text[]" json:"departmentIds"`
 	Departments   []Department `gorm:"many2many:department_courses;" json:"departments"` // GORM will create a join table 'department_courses'
 }

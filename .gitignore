@@ -1,0 +1,30 @@
+# Binaries for programs
+*.exe
+*.darwin
+*.linux
+*.windows
+*.test
+*.prof
+
+# Output of `go build`
+/qb # if you build your main executable in the root
+/bin/
+/dist/ # Common for distribution builds
+
+# Dependency directories
+# vendor/ # Uncomment if you're explicitly vendoring dependencies
+
+# Test coverage output
+*.out
+
+# Editor/IDE specific files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+
+# Go build cache
+.cache/
