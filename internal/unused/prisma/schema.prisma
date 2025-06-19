@@ -1,0 +1,115 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id                String      @id @default(auto()) @map("_id") @db.ObjectId
+    firstName         String
+    lastName          String?
+    email             String      @unique
+    role              Role        @default(MEMBER)
+    age               Int?
+    image             String?
+    username          String?     @unique
+    departmentId      String?
+    levelId           Int?
+    semester          Int?
+    isActive          Boolean     @default(true)
+    password          String?
+    phone             String?
+    twitter           String?
+    linkedIn          String?
+    discord           String?
+    updatedAt         DateTime    @updatedAt
+    uploadedQuestions Question[]
+    department        Department? @relation(fields: [departmentId], references: [id])
+    level             Level?      @relation(fields: [levelId], references: [id])
+}
+
+model Faculty {
+    id          Int          @id @map("_id")
+    title       String       @unique
+    departments Department[]
+}
+
+model Department {
+    id        String   @id @map("_id")
+    title     String   @unique
+    facultyId Int
+    faculty   Faculty  @relation(fields: [facultyId], references: [id])
+    users     User[]
+    courseIDs String[]
+    Course    Course[] @relation(fields: [courseIDs], references: [id])
+}
+
+model Level {
+    id      Int      @id @map("_id")
+    courses Course[]
+    users   User[]
+}
+
+model Session {
+    id        String     @id @map("_id")
+    startDate DateTime?
+    endDate   DateTime?
+    info      String?
+    questions Question[]
+}
+
+model Question {
+    id          String       @id @map("_id")
+    courseId    String
+    course      Course       @relation(fields: [courseId], references: [id])
+    sessionId   String
+    session     Session      @relation(fields: [sessionId], references: [id])
+    imageLinks  String[]
+    lecturer    String?
+    timeAllowed Int?
+    docLink     String?
+    tips        String?
+    type        QuestionType
+    downloads   Int?
+    views       Int?
+    approved    Boolean      @default(false)
+    uploaderId  String?      @db.ObjectId
+    uploader    User?        @relation(fields: [uploaderId], references: [id])
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
+}
+
+model Course {
+    id            String        @id @map("_id")
+    units         Int
+    title         String
+    levelId       Int
+    semester      Int
+    description   String?
+    status        CourseStatus?
+    createdAt     DateTime      @default(now())
+    updatedAt     DateTime      @updatedAt
+    level         Level         @relation(fields: [levelId], references: [id])
+    questions     Question[]
+    departmentIDs String[]
+    departments   Department[]  @relation(fields: [departmentIDs], references: [id])
+}
+
+enum Role {
+    ADMIN
+    MEMBER
+}
+
+enum QuestionType {
+    TEST
+    EXAM
+}
+
+enum CourseStatus {
+    ELECTIVE
+    COMPULSORY
+    UNAVAILABLE
+}

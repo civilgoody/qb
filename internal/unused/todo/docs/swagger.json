@@ -1,0 +1,334 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a simple To-Do list API built with Go, Gin, and GORM.",
+        "title": "Go To-Do API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/todos": {
+            "get": {
+                "description": "Retrieve a list of all To-Do items from the database.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Get all To-Dos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Todo"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new To-Do item in the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Create a new To-Do",
+                "parameters": [
+                    {
+                        "description": "To-Do object to be created",
+                        "name": "todo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateTodoInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Todo"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request: Validation Errors",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/todos/{id}": {
+            "get": {
+                "description": "Retrieve a single To-Do item from the database using its ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Get To-Do by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "To-Do ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Todo"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update an existing To-Do item in the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Update a To-Do",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "To-Do ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "To-Do object with updated fields",
+                        "name": "todo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateTodoInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Todo"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request: Validation Errors",
+                        "schema": {
+                            "$ref": "#/definitions/models.ValidationErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a To-Do item from the database using its ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "todos"
+                ],
+                "summary": "Delete a To-Do",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "To-Do ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.CreateTodoInput": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "completed": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Research destinations and activities"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3,
+                    "example": "Plan weekend trip"
+                }
+            }
+        },
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "A descriptive error message",
+                    "type": "string"
+                }
+            }
+        },
+        "models.Todo": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "completed": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-01-01T12:00:00Z"
+                },
+                "deleted_at": {
+                    "description": "Simplified for Swagger parsing",
+                    "type": "string",
+                    "example": "null"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Milk, eggs, bread and cheese"
+                },
+                "id": {
+                    "description": "gorm.Model includes ID, CreatedAt, UpdatedAt, DeletedAt (soft delete).\nWe'll define our own ID to match the string type requirement,\nbut keeping the other GORM fields for convenience.",
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3,
+                    "example": "Buy groceries"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2023-01-01T12:30:00Z"
+                }
+            }
+        },
+        "models.UpdateTodoInput": {
+            "type": "object",
+            "properties": {
+                "completed": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Confirm dates and prices"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3,
+                    "example": "Book flight tickets"
+                }
+            }
+        },
+        "models.ValidationErrorResponse": {
+            "type": "object",
+            "properties": {
+                "validation_errors": {
+                    "description": "Map of field names to error messages",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
