@@ -71,7 +71,7 @@ type User struct {
 // - Departments: One-to-many relationship with Department.
 type Faculty struct {
 	ID          int          `gorm:"primaryKey;column:_id" json:"id"`
-	Title       string       `gorm:"unique" json:"title"`
+	Title       string       `gorm:"unique" json:"title" binding:"required" validate:"required"`
 	Departments []Department `gorm:"foreignKey:FacultyID" json:"departments,omitempty"`
 }
 
@@ -87,7 +87,7 @@ type Faculty struct {
 //   I'm keeping `CourseIDs` as a string array, implying manual handling of the join.
 type Department struct {
 	ID        int      `gorm:"primaryKey;column:_id" json:"id"`
-	Title     string   `gorm:"unique" json:"title"`
+	Title     string   `gorm:"unique" json:"title" binding:"required" validate:"required"`
 	FacultyID int      `json:"facultyId"`
 	Faculty   Faculty  `gorm:"foreignKey:FacultyID" json:"faculty"`
 	Users     []User   `gorm:"foreignKey:DepartmentID" json:"users,omitempty"`
@@ -96,11 +96,11 @@ type Department struct {
 
 // Level model translated from Prisma schema.
 // Explanation:
-// - ID: Translated from Int @id @map("_id").
+// - ID: Translated from Int @id @map("_id"). No longer auto-incrementing; expected from client.
 // - Courses: One-to-many relationship with Course.
 // - Users: One-to-many relationship with User.
 type Level struct {
-	ID      int      `gorm:"primaryKey;column:_id" json:"id"`
+	ID      int      `gorm:"primaryKey;column:_id" json:"id" binding:"required" validate:"oneof=100 200 300 400 500"`
 	Courses []Course `gorm:"foreignKey:LevelID" json:"courses,omitempty"`
 	Users   []User   `gorm:"foreignKey:LevelID" json:"users,omitempty"`
 }

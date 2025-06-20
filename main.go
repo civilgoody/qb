@@ -1,10 +1,10 @@
 package main
 
 import (
+	"log"
 	"qb/internal/routes"
 	"qb/pkg/database"
 	"qb/pkg/utils"
-	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,16 +17,22 @@ func main() {
 	// Connect to the database
 	database.ConnectDB()
 
-	router := gin.Default()
-	routes.SetupRoutes(router)
-	router.RedirectTrailingSlash = false
-	router.Run(":8080")
+	// Use gin.New() instead of gin.Default() to have full control over middleware
+	r := gin.New()
+	
+	// Add custom middleware
+	r.Use(gin.Logger())
+	r.Use(utils.CustomRecovery()) // Use our custom recovery instead of default
+	
+	r.RedirectTrailingSlash = false
+
+	routes.SetupRoutes(r)
 
 	// Start the server
 	port := utils.GetEnvFatal("PORT")
 
 	log.Printf("Server starting on :%s", port)
-	if err := router.Run(":" + port); err != nil {
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
