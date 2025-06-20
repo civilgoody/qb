@@ -7,5 +7,13 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine) {
-	router.GET("/", handlers.Status)
+	v1 := router.Group("/api/v1")
+	{
+		v1.GET("/", handlers.Status)
+		faculty := v1.Group("/faculty")
+		{
+			faculty.POST("", handlers.CreateFaculty)
+			faculty.GET("", handlers.GetFaculties)
+		}
+	}
 }
