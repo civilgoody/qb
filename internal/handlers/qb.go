@@ -6,10 +6,7 @@ import (
 	"qb/pkg/utils"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 )
-
-var validate = validator.New()
 
 func Status(c *gin.Context) {
 	utils.SuccessResponse(c, gin.H{"message": "Welcome to the Qb API"})
@@ -18,18 +15,7 @@ func Status(c *gin.Context) {
 func CreateFaculty(c *gin.Context) {
 	var faculty models.Faculty
 	
-	if err := c.ShouldBindJSON(&faculty); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := validate.Struct(faculty); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := database.DB.Create(&faculty).Error; err != nil {
-		utils.HandleDatabaseError(c, err)
+	if utils.HandleCreateResource(c, database.DB, utils.Validator, &faculty) {
 		return
 	}
 
@@ -61,18 +47,7 @@ func DeleteFaculty(c *gin.Context) {
 func CreateLevel(c *gin.Context) {
 	var level models.Level
 
-	if err := c.ShouldBindJSON(&level); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := validate.Struct(level); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := database.DB.Create(&level).Error; err != nil {
-		utils.HandleDatabaseError(c, err)
+	if utils.HandleCreateResource(c, database.DB, utils.Validator, &level) {
 		return
 	}
 

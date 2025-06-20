@@ -60,3 +60,28 @@ func HandleDelete(c *gin.Context, result *gorm.DB, resourceType string, id int) 
 
 	SuccessResponse(c, gin.H{"message": fmt.Sprintf("%s with ID %d deleted successfully", resourceType, id)})
 }
+
+// HandleCreateResource handles the common logic for creating a resource:
+// binding JSON, validating, and creating in the database.
+// It returns true if an error occurred and was handled, false otherwise.
+func HandleCreateResource(c *gin.Context, db *gorm.DB, validate *validator.Validate, resource interface{}) bool {
+	// Bind JSON payload to the resource struct
+	if err := c.ShouldBindJSON(resource); err != nil {
+		HandleValidationError(c, err)
+		return true
+	}
+
+	// Validate the struct based on 'validate' tags
+	if err := validate.Struct(resource); err != nil {
+		HandleValidationError(c, err)
+		return true
+	}
+
+	// Attempt to create the resource in the database
+	if err := db.Create(resource).Error; err != nil {
+		HandleDatabaseError(c, err)
+		return true
+	}
+
+	return false // No error occurred
+}

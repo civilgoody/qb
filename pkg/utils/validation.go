@@ -7,6 +7,9 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// Validator is the global instance of the validator.
+var Validator = validator.New()
+
 // FormatValidationErrors converts validator errors to user-friendly messages
 func FormatValidationErrors(err error) map[string]string {
 	errors := make(map[string]string)
