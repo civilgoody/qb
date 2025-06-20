@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"fmt"
 	"qb/pkg/database"
 	"qb/pkg/models"
 	"qb/pkg/utils"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -50,25 +48,14 @@ func GetFaculties(c *gin.Context) {
 }
 
 func DeleteFaculty(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+	id, err := utils.GetIDFromParam(c, "id")
 	if err != nil {
-		utils.HandleError(c, utils.NewValidationError("Invalid faculty ID format"))
+		utils.HandleError(c, err)
 		return
 	}
 
 	result := database.DB.Delete(&models.Faculty{}, id)
-	if result.Error != nil {
-		utils.HandleError(c, utils.ErrDatabase)
-		return
-	}
-
-	if result.RowsAffected == 0 {
-		utils.HandleError(c, utils.ErrNotFound)
-		return
-	}
-
-	utils.SuccessResponse(c, gin.H{"message": fmt.Sprintf("Faculty with ID %d deleted successfully", id)})
+	utils.HandleDelete(c, result, "Faculty", id)
 }
 
 func CreateLevel(c *gin.Context) {
@@ -104,23 +91,12 @@ func GetLevels(c *gin.Context) {
 }
 
 func DeleteLevel(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+	id, err := utils.GetIDFromParam(c, "id")
 	if err != nil {
-		utils.HandleError(c, utils.NewValidationError("Invalid level ID format"))
+		utils.HandleError(c, err)
 		return
 	}
 
 	result := database.DB.Delete(&models.Level{}, id)
-	if result.Error != nil {
-		utils.HandleError(c, utils.ErrDatabase)
-		return
-	}
-
-	if result.RowsAffected == 0 {
-		utils.HandleError(c, utils.ErrNotFound)
-		return
-	}
-
-	utils.SuccessResponse(c, gin.H{"message": fmt.Sprintf("Level with ID %d deleted successfully", id)})
+	utils.HandleDelete(c, result, "Level", id)
 }
