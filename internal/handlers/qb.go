@@ -18,30 +18,20 @@ func CreateFaculty(c *gin.Context) {
 	if utils.HandleCreateResource(c, database.DB, utils.Validator, &faculty) {
 		return
 	}
-
-	utils.SuccessResponse(c, faculty)
 }
 
 func GetFaculties(c *gin.Context) {
 	var faculties []models.Faculty
 	
-	if err := database.DB.Find(&faculties).Error; err != nil {
-		utils.HandleError(c, utils.ErrDatabase)
+	if utils.HandleGetResources(c, database.DB, &faculties) {
 		return
 	}
-
-	utils.SuccessResponse(c, faculties)
 }
 
 func DeleteFaculty(c *gin.Context) {
-	id, err := utils.GetIDFromParam(c, "id")
-	if err != nil {
-		utils.HandleError(c, err)
+	if utils.DeleteResourceByID(c, database.DB, "id", "Faculty", &models.Faculty{}) {
 		return
 	}
-
-	result := database.DB.Delete(&models.Faculty{}, id)
-	utils.HandleDelete(c, result, "Faculty", id)
 }
 
 func CreateLevel(c *gin.Context) {
@@ -50,28 +40,18 @@ func CreateLevel(c *gin.Context) {
 	if utils.HandleCreateResource(c, database.DB, utils.Validator, &level) {
 		return
 	}
-
-	utils.SuccessResponse(c, level)
 }
 
 func GetLevels(c *gin.Context) {
 	var levels []models.Level
 	
-	if err := database.DB.Find(&levels).Error; err != nil {
-		utils.HandleError(c, utils.ErrDatabase)
+	if utils.HandleGetResources(c, database.DB, &levels) {
 		return
 	}
-
-	utils.SuccessResponse(c, levels)
 }
 
 func DeleteLevel(c *gin.Context) {
-	id, err := utils.GetIDFromParam(c, "id")
-	if err != nil {
-		utils.HandleError(c, err)
+	if utils.DeleteResourceByID(c, database.DB, "id", "Level", &models.Level{}) {
 		return
 	}
-
-	result := database.DB.Delete(&models.Level{}, id)
-	utils.HandleDelete(c, result, "Level", id)
 }

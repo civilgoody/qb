@@ -46,6 +46,17 @@ func GetIDFromParam(c *gin.Context, paramName string) (int, error) {
 	return id, nil
 }
 
+// GetAndHandleID extracts an integer ID from a Gin context parameter and handles errors.
+// It returns the ID and a boolean indicating if an error was handled.
+func GetAndHandleID(c *gin.Context, paramName string) (id int, handled bool) {
+	id, err := GetIDFromParam(c, paramName)
+	if err != nil {
+		HandleError(c, err)
+		return 0, true // Error handled, return 0 and true
+	}
+	return id, false // No error, return ID and false
+}
+
 // HandleDelete processes the result of a GORM delete operation.
 func HandleDelete(c *gin.Context, result *gorm.DB, resourceType string, id int) {
 	if result.Error != nil {
@@ -59,6 +70,21 @@ func HandleDelete(c *gin.Context, result *gorm.DB, resourceType string, id int) 
 	}
 
 	SuccessResponse(c, gin.H{"message": fmt.Sprintf("%s with ID %d deleted successfully", resourceType, id)})
+}
+
+// DeleteResourceByID handles the common logic for deleting a resource by ID.
+// It returns true if an error occurred and was handled, false otherwise.
+func DeleteResourceByID(c *gin.Context, db *gorm.DB, paramName, resourceType string, model interface{}) bool {
+	id, err := GetIDFromParam(c, paramName)
+	if err != nil {
+		HandleError(c, err)
+		return true
+	}
+
+	result := db.Delete(model, id)
+	HandleDelete(c, result, resourceType, id)
+
+	return false // No error occurred
 }
 
 // HandleCreateResource handles the common logic for creating a resource:
@@ -83,5 +109,17 @@ func HandleCreateResource(c *gin.Context, db *gorm.DB, validate *validator.Valid
 		return true
 	}
 
+	SuccessResponse(c, resource) // Success response moved here
+	return false // No error occurred
+}
+
+// HandleGetResources handles the common logic for retrieving a collection of resources.
+// It returns true if an error occurred and was handled, false otherwise.
+func HandleGetResources(c *gin.Context, db *gorm.DB, resources interface{}) bool {
+	if err := db.Find(resources).Error; err != nil {
+		HandleError(c, ErrDatabase)
+		return true
+	}
+	SuccessResponse(c, resources)
 	return false // No error occurred
 }
