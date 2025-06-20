@@ -43,25 +43,25 @@ const (
 type User struct {
 	ID                string      `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
 	FirstName         string      `json:"firstName"`
-	LastName          *string     `json:"lastName"`
+	LastName          *string     `json:"lastName,omitempty"`
 	Email             string      `gorm:"unique" json:"email"`
-	Role              Role        `gorm:"default:'MEMBER'" json:"role"`
-	Age               *int        `json:"age"`
-	Image             *string     `json:"image"`
-	Username          *string     `gorm:"unique" json:"username"`
-	DepartmentID      *string     `gorm:"type:char(36)" json:"departmentId"`
-	LevelID           *int        `json:"levelId"`
-	Semester          *int        `json:"semester"`
+	Role              Role        `gorm:"type:enum('ADMIN','MEMBER');default:'MEMBER'" json:"role"`
+	Age               *int        `json:"age,omitempty"`
+	Image             *string     `json:"image,omitempty"`
+	Username          *string     `gorm:"unique;type:varchar(18)" json:"username,omitempty"`
+	DepartmentID      *int        `json:"departmentId,omitempty"`
+	LevelID           *int        `json:"levelId,omitempty"`
+	Semester          *int        `json:"semester,omitempty"`
 	IsActive          bool        `gorm:"default:true" json:"isActive"`
-	Password          *string     `json:"password"`
-	Phone             *string     `json:"phone"`
-	Twitter           *string     `json:"twitter"`
-	LinkedIn          *string     `json:"linkedin"`
-	Discord           *string     `json:"discord"`
+	Password          *string     `json:"password,omitempty"`
+	Phone             *string     `gorm:"type:varchar(32)" json:"phone,omitempty"`
+	Twitter           *string     `gorm:"type:varchar(32)" json:"twitter,omitempty"`
+	LinkedIn          *string     `gorm:"type:varchar(32)" json:"linkedIn,omitempty"`
+	Discord           *string     `gorm:"type:varchar(32)" json:"discord,omitempty"`
 	UpdatedAt         time.Time   `gorm:"autoUpdateTime" json:"updatedAt"`
-	UploadedQuestions []Question  `gorm:"foreignKey:UploaderID" json:"uploadedQuestions"`
-	Department        *Department `gorm:"foreignKey:DepartmentID" json:"department"`
-	Level             *Level      `gorm:"foreignKey:LevelID" json:"level"`
+	UploadedQuestions []Question  `gorm:"foreignKey:UploaderID" json:"uploadedQuestions,omitempty"`
+	Department        Department  `gorm:"foreignKey:DepartmentID" json:"department"`
+	Level             Level       `gorm:"foreignKey:LevelID" json:"level"`
 }
 
 // Faculty model translated from Prisma schema.
@@ -72,12 +72,12 @@ type User struct {
 type Faculty struct {
 	ID          int          `gorm:"primaryKey;column:_id" json:"id"`
 	Title       string       `gorm:"unique" json:"title"`
-	Departments []Department `gorm:"foreignKey:FacultyID" json:"departments"`
+	Departments []Department `gorm:"foreignKey:FacultyID" json:"departments,omitempty"`
 }
 
 // Department model translated from Prisma schema.
 // Explanation:
-// - ID: Translated from String @id @map("_id").
+// - ID: Changed from String to Int.
 // - Title: Unique string.
 // - FacultyID: Foreign key to Faculty.
 // - Faculty: Many-to-one relationship with Faculty.
@@ -86,12 +86,12 @@ type Faculty struct {
 //   For PostgreSQL, a join table `DepartmentCourses` would be more idiomatic for a many-to-many relationship. For demonstration purposes,
 //   I'm keeping `CourseIDs` as a string array, implying manual handling of the join.
 type Department struct {
-	ID        string   `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
+	ID        int      `gorm:"primaryKey;column:_id" json:"id"`
 	Title     string   `gorm:"unique" json:"title"`
 	FacultyID int      `json:"facultyId"`
 	Faculty   Faculty  `gorm:"foreignKey:FacultyID" json:"faculty"`
-	Users     []User   `gorm:"foreignKey:DepartmentID" json:"users"`
-	Course    []Course `gorm:"many2many:department_courses;" json:"course"` // GORM will create a join table 'department_courses'
+	Users     []User   `gorm:"foreignKey:DepartmentID" json:"users,omitempty"`
+	Course    []Course `gorm:"many2many:department_courses;" json:"course,omitempty"`
 }
 
 // Level model translated from Prisma schema.
@@ -101,8 +101,8 @@ type Department struct {
 // - Users: One-to-many relationship with User.
 type Level struct {
 	ID      int      `gorm:"primaryKey;column:_id" json:"id"`
-	Courses []Course `gorm:"foreignKey:LevelID" json:"courses"`
-	Users   []User   `gorm:"foreignKey:LevelID" json:"users"`
+	Courses []Course `gorm:"foreignKey:LevelID" json:"courses,omitempty"`
+	Users   []User   `gorm:"foreignKey:LevelID" json:"users,omitempty"`
 }
 
 // Session model translated from Prisma schema.
@@ -111,11 +111,11 @@ type Level struct {
 // - StartDate/EndDate: Nullable DateTime fields become *time.Time.
 // - Questions: One-to-many relationship with Question.
 type Session struct {
-	ID        string    `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
-	StartDate *time.Time `json:"startDate"`
-	EndDate   *time.Time `json:"endDate"`
-	Info      *string    `json:"info"`
-	Questions []Question `gorm:"foreignKey:SessionID" json:"questions"`
+	ID        string    `gorm:"primaryKey;column:_id;type:char(10)" json:"id"`
+	StartDate *time.Time `json:"startDate,omitempty"`
+	EndDate   *time.Time `json:"endDate,omitempty"`
+	Info      *string    `json:"info,omitempty"`
+	Questions []Question `gorm:"foreignKey:SessionID" json:"questions,omitempty"`
 }
 
 // Question model translated from Prisma schema.
@@ -135,17 +135,17 @@ type Question struct {
 	Course      Course       `gorm:"foreignKey:CourseID" json:"course"`
 	SessionID   string       `gorm:"type:char(36)" json:"sessionId"`
 	Session     Session      `gorm:"foreignKey:SessionID" json:"session"`
-	ImageLinks  []string     `gorm:"type:json" json:"imageLinks"`
-	Lecturer    *string      `json:"lecturer"`
-	TimeAllowed *int         `json:"timeAllowed"`
-	DocLink     *string      `json:"docLink"`
-	Tips        *string      `json:"tips"`
+	ImageLinks  []string     `gorm:"type:json" json:"imageLinks,omitempty"`
+	Lecturer    *string      `json:"lecturer,omitempty"`
+	TimeAllowed *int         `json:"timeAllowed,omitempty"`
+	DocLink     *string      `json:"docLink,omitempty"`
+	Tips        *string      `json:"tips,omitempty"`
 	Type        QuestionType `json:"type"`
-	Downloads   *int         `json:"downloads"`
-	Views       *int         `json:"views"`
+	Downloads   *int         `json:"downloads,omitempty"`
+	Views       *int         `json:"views,omitempty"`
 	Approved    bool         `gorm:"default:false" json:"approved"`
-	UploaderID  *string      `gorm:"type:char(36)" json:"uploaderId"`
-	Uploader    *User        `gorm:"foreignKey:UploaderID" json:"uploader"`
+	UploaderID  *string      `gorm:"type:char(36)" json:"uploaderId,omitempty"`
+	Uploader    *User        `gorm:"foreignKey:UploaderID" json:"uploader,omitempty"`
 	CreatedAt   time.Time    `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt   time.Time    `gorm:"autoUpdateTime" json:"updatedAt"`
 }
@@ -166,11 +166,11 @@ type Course struct {
 	Title         string       `json:"title"`
 	LevelID       int          `json:"levelId"`
 	Semester      int          `json:"semester"`
-	Description   *string      `json:"description"`
-	Status        *CourseStatus `json:"status"`
+	Description   *string      `json:"description,omitempty"`
+	Status        *CourseStatus `json:"status,omitempty"`
 	CreatedAt     time.Time    `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt     time.Time    `gorm:"autoUpdateTime" json:"updatedAt"`
 	Level         Level        `gorm:"foreignKey:LevelID" json:"level"`
-	Questions     []Question   `gorm:"foreignKey:CourseID" json:"questions"`
-	Departments   []Department `gorm:"many2many:department_courses;" json:"departments"` // GORM will create a join table 'department_courses'
+	Questions     []Question   `gorm:"foreignKey:CourseID" json:"questions,omitempty"`
+	Departments   []Department `gorm:"many2many:department_courses;" json:"departments,omitempty"`
 }
