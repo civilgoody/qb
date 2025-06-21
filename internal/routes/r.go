@@ -22,5 +22,23 @@ func SetupRoutes(router *gin.Engine) {
 			level.GET("", handlers.GetLevels)
 			level.DELETE("/:id", handlers.DeleteLevel)
 		}
+		session := v1.Group("/session")
+		{
+			session.POST("", handlers.CreateSession)
+			session.GET("", handlers.GetSessions)
+			session.DELETE("/:id", handlers.DeleteSession)
+		}
+		course := v1.Group("/course")
+		{
+			course.POST("", handlers.CreateCourse)
+			course.GET("", handlers.GetCourses)
+			course.DELETE("/:id", handlers.DeleteCourse)
+		}
+		department := v1.Group("/department")
+		{
+			department.POST("", handlers.CreateDepartment)
+			department.GET("", handlers.GetDepartments)
+			department.DELETE("/:id", handlers.DeleteDepartment)
+		}
 	}
 }

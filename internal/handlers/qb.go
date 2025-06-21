@@ -55,3 +55,69 @@ func DeleteLevel(c *gin.Context) {
 		return
 	}
 }
+
+func CreateDepartment(c *gin.Context) {
+	var department models.Department
+	
+	if utils.HandleCreateResource(c, database.DB, utils.Validator, &department) {
+		return
+	}
+}
+
+func GetDepartments(c *gin.Context) {
+	var departments []models.Department
+	
+	if utils.HandleGetResources(c, database.DB, &departments) {
+		return
+	}
+}
+
+func DeleteDepartment(c *gin.Context) {
+	if utils.DeleteResourceByID(c, database.DB, "id", "Department", &models.Department{}) {
+		return
+	}
+}
+
+func CreateCourse(c *gin.Context) {
+	var course models.Course
+
+	if utils.HandleCreateResource(c, database.DB, utils.Validator, &course) {
+		return
+	}
+}
+
+func GetCourses(c *gin.Context) {
+	var courses []models.Course
+	
+	if utils.HandleGetResources(c, database.DB, &courses) {
+		return
+	}
+}
+
+func DeleteCourse(c *gin.Context) {
+	if utils.DeleteResourceByID(c, database.DB, "id", "Course", &models.Course{}) {
+		return
+	}
+}
+
+func CreateSession(c *gin.Context) {
+	var session models.Session
+
+	if utils.HandleCreateResource(c, database.DB, utils.Validator, &session) {
+		return
+	}
+}
+
+func GetSessions(c *gin.Context) {
+	var sessions []models.Session
+
+	if utils.HandleGetResources(c, database.DB, &sessions) {
+		return
+	}
+}
+
+func DeleteSession(c *gin.Context) {
+	if utils.DeleteResourceByStringID(c, database.DB, "id", "Session", &models.Session{}) {
+		return
+	}
+}

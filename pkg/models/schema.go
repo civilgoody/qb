@@ -60,8 +60,8 @@ type User struct {
 	Discord           *string     `gorm:"type:varchar(32)" json:"discord,omitempty"`
 	UpdatedAt         time.Time   `gorm:"autoUpdateTime" json:"updatedAt"`
 	UploadedQuestions []Question  `gorm:"foreignKey:UploaderID" json:"uploadedQuestions,omitempty"`
-	Department        Department  `gorm:"foreignKey:DepartmentID" json:"department"`
-	Level             Level       `gorm:"foreignKey:LevelID" json:"level"`
+	Department        *Department `gorm:"foreignKey:DepartmentID" json:"department,omitempty"`
+	Level             *Level      `gorm:"foreignKey:LevelID" json:"level,omitempty"`
 }
 
 // Faculty model translated from Prisma schema.
@@ -88,8 +88,8 @@ type Faculty struct {
 type Department struct {
 	ID        int      `gorm:"primaryKey;column:_id" json:"id"`
 	Title     string   `gorm:"unique" json:"title" binding:"required" validate:"required"`
-	FacultyID int      `json:"facultyId"`
-	Faculty   Faculty  `gorm:"foreignKey:FacultyID" json:"faculty"`
+	FacultyID int      `json:"facultyId" validate:"required"`
+	Faculty   *Faculty `gorm:"foreignKey:FacultyID" json:"faculty"`
 	Users     []User   `gorm:"foreignKey:DepartmentID" json:"users,omitempty"`
 	Course    []Course `gorm:"many2many:department_courses;" json:"course,omitempty"`
 }
@@ -111,10 +111,10 @@ type Level struct {
 // - StartDate/EndDate: Nullable DateTime fields become *time.Time.
 // - Questions: One-to-many relationship with Question.
 type Session struct {
-	ID        string    `gorm:"primaryKey;column:_id;type:char(10)" json:"id"`
-	StartDate *time.Time `json:"startDate,omitempty"`
-	EndDate   *time.Time `json:"endDate,omitempty"`
-	Info      *string    `json:"info,omitempty"`
+	ID        string    `gorm:"primaryKey;column:_id;type:char(10)" json:"id" binding:"required" validate:"required"`
+	StartDate int       `json:"startDate" binding:"required" validate:"required,min=1000,max=9999"`
+	EndDate   int       `json:"endDate" binding:"required" validate:"required,min=1000,max=9999"`
+	Info      *string   `json:"info,omitempty"`
 	Questions []Question `gorm:"foreignKey:SessionID" json:"questions,omitempty"`
 }
 
@@ -132,9 +132,9 @@ type Session struct {
 type Question struct {
 	ID          string       `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
 	CourseID    string       `gorm:"type:char(36)" json:"courseId"`
-	Course      Course       `gorm:"foreignKey:CourseID" json:"course"`
+	Course      *Course      `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 	SessionID   string       `gorm:"type:char(36)" json:"sessionId"`
-	Session     Session      `gorm:"foreignKey:SessionID" json:"session"`
+	Session     *Session     `gorm:"foreignKey:SessionID" json:"session,omitempty"`
 	ImageLinks  []string     `gorm:"type:json" json:"imageLinks,omitempty"`
 	Lecturer    *string      `json:"lecturer,omitempty"`
 	TimeAllowed *int         `json:"timeAllowed,omitempty"`
@@ -170,7 +170,7 @@ type Course struct {
 	Status        *CourseStatus `json:"status,omitempty"`
 	CreatedAt     time.Time    `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt     time.Time    `gorm:"autoUpdateTime" json:"updatedAt"`
-	Level         Level        `gorm:"foreignKey:LevelID" json:"level"`
+	Level         *Level       `gorm:"foreignKey:LevelID" json:"level,omitempty"`
 	Questions     []Question   `gorm:"foreignKey:CourseID" json:"questions,omitempty"`
 	Departments   []Department `gorm:"many2many:department_courses;" json:"departments,omitempty"`
 }
