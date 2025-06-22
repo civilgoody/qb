@@ -156,3 +156,35 @@ func HandleGetResources(c *gin.Context, db *gorm.DB, resources interface{}) bool
 	SuccessResponse(c, resources)
 	return false // No error occurred
 }
+
+// GetCourseFilterParams extracts and validates dept, level, and semester parameters
+// Returns the validated parameters and a boolean indicating if an error was handled
+func GetCourseFilterParams(c *gin.Context) (dept string, level int, semester int, handled bool) {
+    dept = c.Param("dept")
+    
+    // Validate and get level
+    level, handled = GetAndHandleID(c, "level")
+    if handled {
+        return "", 0, 0, true
+    }
+    
+    // Validate and get semester
+    semester, handled = GetAndHandleID(c, "semester")
+    if handled {
+        return "", 0, 0, true
+    }
+    
+    // Additional validation for level (100, 200, 300, 400, 500)
+    if level < 100 || level > 500 || level%100 != 0 {
+        HandleError(c, NewValidationError("Level must be one of: 100, 200, 300, 400, 500"))
+        return "", 0, 0, true
+    }
+    
+    // Additional validation for semester (1 or 2)
+    if semester < 1 || semester > 2 {
+        HandleError(c, NewValidationError("Semester must be 1 or 2"))
+        return "", 0, 0, true
+    }
+    
+    return dept, level, semester, false
+}
