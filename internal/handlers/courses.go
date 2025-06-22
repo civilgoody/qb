@@ -35,16 +35,10 @@ func CreateCourse(c *gin.Context) {
 	var input models.CreateCourseDTO
 
 	// Step 1: Bind and validate the DTO
-	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.HandleValidationError(c, err)
+	if utils.BindAndValidate(c, &input) {
 		return
 	}
-
-	if err := utils.Validator.Struct(&input); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
+	
 	// Step 2: Parse the course code
 	departmentCode, level, semester, _, err := input.ParseCourseCode()
 	if err != nil {

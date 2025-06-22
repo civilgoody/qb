@@ -21,6 +21,20 @@ func HandleValidationError(c *gin.Context, err error) {
 	HandleError(c, NewValidationError(err.Error()))
 }
 
+func BindAndValidate[T any](c *gin.Context, input *T) bool {
+    if err := c.ShouldBindJSON(input); err != nil {
+        HandleValidationError(c, err)
+        return true // handled
+    }
+    
+    if err := Validator.Struct(input); err != nil {
+        HandleValidationError(c, err)
+        return true // handled
+    }
+    
+    return false // not handled
+}
+
 // HandleDatabaseError processes database errors with proper error code detection
 func HandleDatabaseError(c *gin.Context, err error) {
 	// First, try to handle MySQL-specific errors by error code (more reliable)
