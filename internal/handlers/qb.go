@@ -104,14 +104,14 @@ func CreateCourse(c *gin.Context) {
 
 	// Step 3: Validate that the department exists
 	var department models.Department
-	if err := database.DB.Where("_id = ?", departmentCode).First(&department).Error; err != nil {
+	if err := database.DB.Where("id = ?", departmentCode).First(&department).Error; err != nil {
 		utils.HandleError(c, utils.NewValidationError("Department with code '"+departmentCode+"' does not exist"))
 		return
 	}
 
 	// Step 4: Validate that the level exists
 	var levelModel models.Level
-	if err := database.DB.Where("_id = ?", level).First(&levelModel).Error; err != nil {
+	if err := database.DB.Where("id = ?", level).First(&levelModel).Error; err != nil {
 		utils.HandleError(c, utils.NewValidationError("Level "+strconv.Itoa(level)+" does not exist"))
 		return
 	}
@@ -141,13 +141,9 @@ func CreateCourse(c *gin.Context) {
 func GetCourses(c *gin.Context) {
 	var courses []models.Course
 	
-	// Preload related Level and Departments data
-	if err := database.DB.Preload("Level").Preload("Departments").Find(&courses).Error; err != nil {
-		utils.HandleError(c, utils.ErrDatabase)
+	if utils.HandleGetResources(c, database.DB, &courses) {
 		return
 	}
-	
-	utils.SuccessResponse(c, courses)
 }
 
 func DeleteCourse(c *gin.Context) {
