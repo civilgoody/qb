@@ -114,7 +114,7 @@ func DeleteResourceByID(c *gin.Context, db *gorm.DB, paramName, resourceType str
 func DeleteResourceByStringID(c *gin.Context, db *gorm.DB, paramName, resourceType string, model interface{}) bool {
 	id := c.Param(paramName)
 
-	result := db.Delete(model, "_id = ?", id)
+	result := db.Delete(model, "id = ?", id)
 	HandleDelete(c, result, resourceType, id)
 
 	return false // No error occurred
