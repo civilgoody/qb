@@ -49,7 +49,7 @@ type User struct {
 	Age               *int        `json:"age,omitempty"`
 	Image             *string     `json:"image,omitempty"`
 	Username          *string     `gorm:"unique;type:varchar(18)" json:"username,omitempty"`
-	DepartmentID      *int        `json:"departmentId,omitempty"`
+	DepartmentID      *string     `json:"departmentId,omitempty"`
 	LevelID           *int        `json:"levelId,omitempty"`
 	Semester          *int        `json:"semester,omitempty"`
 	IsActive          bool        `gorm:"default:true" json:"isActive"`
@@ -86,12 +86,12 @@ type Faculty struct {
 //   For PostgreSQL, a join table `DepartmentCourses` would be more idiomatic for a many-to-many relationship. For demonstration purposes,
 //   I'm keeping `CourseIDs` as a string array, implying manual handling of the join.
 type Department struct {
-	ID        int      `gorm:"primaryKey;column:_id" json:"id"`
+	ID        string   `gorm:"primaryKey;column:_id;type:varchar(3)" json:"id"`
 	Title     string   `gorm:"unique" json:"title" binding:"required" validate:"required"`
 	FacultyID int      `json:"facultyId" validate:"required"`
 	Faculty   *Faculty `gorm:"foreignKey:FacultyID" json:"faculty"`
 	Users     []User   `gorm:"foreignKey:DepartmentID" json:"users,omitempty"`
-	Course    []Course `gorm:"many2many:department_courses;" json:"course,omitempty"`
+	Course    []Course `gorm:"many2many:department_courses;constraint:OnDelete:CASCADE;" json:"course,omitempty"`
 }
 
 // Level model translated from Prisma schema.
@@ -121,7 +121,8 @@ type Session struct {
 // Question model translated from Prisma schema.
 // Explanation:
 // - ID: Translated from String @id @map("_id").
-// - CourseID/SessionID/UploaderID: Foreign keys.
+// - CourseID: Foreign key to Course (6-character course code)
+// - SessionID/UploaderID: Foreign keys.
 // - ImageLinks: Array of strings. `gorm:"type:text[]"` specifies a PostgreSQL array type.
 // - Lecturer/TimeAllowed/DocLink/Tips: Nullable fields.
 // - Type: Mapped to custom QuestionType enum.
@@ -131,7 +132,7 @@ type Session struct {
 // - Course/Session/Uploader: Many-to-one relationships.
 type Question struct {
 	ID          string       `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
-	CourseID    string       `gorm:"type:char(36)" json:"courseId"`
+	CourseID    string       `gorm:"type:varchar(6)" json:"courseId"`
 	Course      *Course      `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 	SessionID   string       `gorm:"type:char(36)" json:"sessionId"`
 	Session     *Session     `gorm:"foreignKey:SessionID" json:"session,omitempty"`
@@ -152,7 +153,7 @@ type Question struct {
 
 // Course model translated from Prisma schema.
 // Explanation:
-// - ID: Translated from String @id @map("_id").
+// - ID: The 6-character course code (e.g., "CEG543") used as primary key
 // - Units/Semester/LevelID: Integer fields.
 // - Description: Nullable string.
 // - Status: Mapped to custom CourseStatus enum.
@@ -161,16 +162,16 @@ type Question struct {
 // - Questions: One-to-many relationship with Question.
 // - Departments: Many-to-many relationship, using a join table.
 type Course struct {
-	ID            string       `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
-	Units         int          `json:"units"`
-	Title         string       `json:"title"`
-	LevelID       int          `json:"levelId"`
-	Semester      int          `json:"semester"`
+	ID            string       `gorm:"primaryKey;column:_id;type:varchar(6)" json:"id"`
+	Units         int          `json:"units" binding:"required" validate:"required,min=1,max=10"`
+	Title         string       `json:"title" binding:"required" validate:"required"`
+	LevelID       int          `json:"levelId" binding:"required" validate:"required"`
+	Semester      int          `json:"semester" binding:"required" validate:"required,min=1,max=2"`
 	Description   *string      `json:"description,omitempty"`
-	Status        *CourseStatus `json:"status,omitempty"`
+	Status        *CourseStatus `json:"status,omitempty" gorm:"default:'ELECTIVE'"`
 	CreatedAt     time.Time    `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt     time.Time    `gorm:"autoUpdateTime" json:"updatedAt"`
 	Level         *Level       `gorm:"foreignKey:LevelID" json:"level,omitempty"`
 	Questions     []Question   `gorm:"foreignKey:CourseID" json:"questions,omitempty"`
-	Departments   []Department `gorm:"many2many:department_courses;" json:"departments,omitempty"`
+	Departments   []Department `gorm:"many2many:department_courses;constraint:OnDelete:CASCADE;" json:"departments,omitempty"`
 }
