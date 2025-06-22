@@ -32,6 +32,7 @@ func SetupRoutes(router *gin.Engine) {
 		{
 			course.POST("", handlers.CreateCourse)
 			course.GET("", handlers.GetCourses)
+			course.GET("/:dept/:level/:semester", handlers.FilterCourses)
 			course.DELETE("/:id", handlers.DeleteCourse)
 		}
 		department := v1.Group("/department")
