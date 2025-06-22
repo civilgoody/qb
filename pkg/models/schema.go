@@ -41,7 +41,7 @@ const (
 // - UploadedQuestions: One-to-many relationship with Question. GORM handles this by looking at the foreign key in the Question model.
 // - Department/Level: Many-to-one relationships. GORM uses DepartmentID and LevelID as foreign keys.
 type User struct {
-	ID                string      `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
+	ID                string      `gorm:"primaryKey;type:char(36);default:(uuid())" json:"id"`
 	FirstName         string      `json:"firstName"`
 	LastName          *string     `json:"lastName,omitempty"`
 	Email             string      `gorm:"unique" json:"email"`
@@ -70,7 +70,7 @@ type User struct {
 // - Title: Unique string.
 // - Departments: One-to-many relationship with Department.
 type Faculty struct {
-	ID          int          `gorm:"primaryKey;column:_id" json:"id"`
+	ID          int          `gorm:"primaryKey" json:"id"`
 	Title       string       `gorm:"unique" json:"title" binding:"required" validate:"required"`
 	Departments []Department `gorm:"foreignKey:FacultyID" json:"departments,omitempty"`
 }
@@ -83,10 +83,10 @@ type Faculty struct {
 // - Faculty: Many-to-one relationship with Faculty.
 // - Users: One-to-many relationship with User.
 // - Course: Many-to-many relationship with Course, explicitly handled by GORM using `gorm:"many2many:department_courses;"` if a join table were desired.
-//   For PostgreSQL, a join table `DepartmentCourses` would be more idiomatic for a many-to-many relationship. For demonstration purposes,
+//   For PostgreSQL, a join table `DepartmentCourses` would be more idiomatic for a many-to-many relationship.
 //   I'm keeping `CourseIDs` as a string array, implying manual handling of the join.
 type Department struct {
-	ID        string   `gorm:"primaryKey;column:_id;type:varchar(3)" json:"id"`
+	ID        string   `gorm:"primaryKey;type:varchar(3)" json:"id"`
 	Title     string   `gorm:"unique" json:"title" binding:"required" validate:"required"`
 	FacultyID int      `json:"facultyId" validate:"required"`
 	Faculty   *Faculty `gorm:"foreignKey:FacultyID" json:"faculty"`
@@ -100,7 +100,7 @@ type Department struct {
 // - Courses: One-to-many relationship with Course.
 // - Users: One-to-many relationship with User.
 type Level struct {
-	ID      int      `gorm:"primaryKey;column:_id" json:"id" binding:"required" validate:"oneof=100 200 300 400 500"`
+	ID      int      `gorm:"primaryKey" json:"id" binding:"required" validate:"oneof=100 200 300 400 500"`
 	Courses []Course `gorm:"foreignKey:LevelID" json:"courses,omitempty"`
 	Users   []User   `gorm:"foreignKey:LevelID" json:"users,omitempty"`
 }
@@ -111,7 +111,7 @@ type Level struct {
 // - StartDate/EndDate: Nullable DateTime fields become *time.Time.
 // - Questions: One-to-many relationship with Question.
 type Session struct {
-	ID        string    `gorm:"primaryKey;column:_id;type:char(10)" json:"id" binding:"required" validate:"required"`
+	ID        string    `gorm:"primaryKey;type:char(10)" json:"id" binding:"required" validate:"required"`
 	StartDate int       `json:"startDate" binding:"required" validate:"required,min=1000,max=9999"`
 	EndDate   int       `json:"endDate" binding:"required" validate:"required,min=1000,max=9999"`
 	Info      *string   `json:"info,omitempty"`
@@ -131,7 +131,7 @@ type Session struct {
 // - CreatedAt/UpdatedAt: Automatically managed timestamps.
 // - Course/Session/Uploader: Many-to-one relationships.
 type Question struct {
-	ID          string       `gorm:"primaryKey;column:_id;type:char(36);default:(uuid())" json:"id"`
+	ID          string       `gorm:"primaryKey;type:char(36);default:(uuid())" json:"id"`
 	CourseID    string       `gorm:"type:varchar(6)" json:"courseId"`
 	Course      *Course      `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 	SessionID   string       `gorm:"type:char(36)" json:"sessionId"`
@@ -162,7 +162,7 @@ type Question struct {
 // - Questions: One-to-many relationship with Question.
 // - Departments: Many-to-many relationship, using a join table.
 type Course struct {
-	ID            string       `gorm:"primaryKey;column:_id;type:varchar(6)" json:"id"`
+	ID            string       `gorm:"primaryKey;type:varchar(6)" json:"id"`
 	Units         int          `json:"units" binding:"required" validate:"required,min=1,max=10"`
 	Title         string       `json:"title" binding:"required" validate:"required"`
 	LevelID       int          `json:"levelId" binding:"required" validate:"required"`
