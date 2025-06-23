@@ -101,3 +101,12 @@ func DeleteSession(c *gin.Context) {
 		return
 	}
 }
+
+
+func GetRequests(c *gin.Context) {
+	var requests []models.TemporaryUpload
+
+	if utils.HandleGetResources(c, database.DB, &requests) {
+		return
+	}
+}
