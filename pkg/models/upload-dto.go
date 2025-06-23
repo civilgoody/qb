@@ -42,6 +42,7 @@ type QuestionResponse struct {
 	SessionID        string   `json:"sessionId"`
 	Type             string   `json:"type"`
 	ImageCount       int      `json:"imageCount"`
+	ImageLinks       []string `json:"imageLinks,omitempty"`
 	ProcessingStatus string   `json:"processingStatus"`
 	Approved         bool     `json:"approved"`
 	CreatedAt        string   `json:"createdAt"`

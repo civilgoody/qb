@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -55,48 +56,44 @@ func CreateQuestion(c *gin.Context) {
 		}
 	}
 
-	// Create question with initial status
-	question := models.Question{
-		CourseID:    input.CourseID,
-		SessionID:   input.SessionID,
-		Type:        input.Type,
-		Lecturer:    input.Lecturer,
-		TimeAllowed: input.TimeAllowed,
-		DocLink:     input.DocLink,
-		Tips:        input.Tips,
-		Approved:    false, // Default to pending approval
-		Downloads:   new(int), // Initialize to 0
-		Views:       new(int), // Initialize to 0
-		ImageLinks:  []string{}, // Will be populated after image processing
+	// Generate question ID first so we can use it for image processing
+	questionID := generateQuestionID()
+	
+	// Process images first if any were uploaded
+	var finalImageURLs []string
+	var processingStatus = "processed"
+	
+	if len(tempPublicIDs) > 0 {
+		finalImageURLs, processingStatus = processQuestionImages(tempPublicIDs, questionID)
 	}
 
-	// Create the question in database first to get the ID
+	// Create question with all data including processed images
+	question := models.Question{
+		ID:               questionID,
+		CourseID:         input.CourseID,
+		SessionID:        input.SessionID,
+		Type:             input.Type,
+		Lecturer:         input.Lecturer,
+		TimeAllowed:      input.TimeAllowed,
+		DocLink:          input.DocLink,
+		Tips:             input.Tips,
+		Approved:         false, // Default to pending approval
+		Downloads:        new(int), // Initialize to 0
+		Views:            new(int), // Initialize to 0
+		ImageLinks:       finalImageURLs,
+		ProcessingStatus: &processingStatus,
+	}
+
+	// Create the question in database with all data
 	if err := database.DB.Create(&question).Error; err != nil {
 		utils.HandleDatabaseError(c, err)
 		return
 	}
 
-	// Process images if any were uploaded
-	var finalImageURLs []string
-	var processingStatus = "processed"
-	
-	if len(tempPublicIDs) > 0 {
-		finalImageURLs, processingStatus = processQuestionImages(tempPublicIDs, question.ID)
-	}
-
-	// Update question with final image URLs and processing status
-	updateData := map[string]interface{}{
-		"image_links": finalImageURLs,
-	}
-
-	// If some images failed to process, note it but don't fail the question creation
-	if processingStatus != "processed" {
-		fmt.Printf("Warning: Some images failed to process for question %s\n", question.ID)
-	}
-
-	if err := database.DB.Model(&question).Updates(updateData).Error; err != nil {
-		// Log error but don't fail since question was created
-		fmt.Printf("Error updating question with image data: %v\n", err)
+	// If we used a temp ID for images, update them to use the real question ID
+	if len(finalImageURLs) > 0 && len(tempPublicIDs) > 0 {
+		// This would require updating the Cloudinary paths, but for now let's keep it simple
+		fmt.Printf("Successfully created question %s with %d images, status: %s\n", question.ID, len(finalImageURLs), processingStatus)
 	}
 
 	// Prepare response
@@ -106,6 +103,7 @@ func CreateQuestion(c *gin.Context) {
 		SessionID:        question.SessionID,
 		Type:             string(question.Type),
 		ImageCount:       len(finalImageURLs),
+		ImageLinks:       finalImageURLs,
 		ProcessingStatus: processingStatus,
 		Approved:         question.Approved,
 		CreatedAt:        question.CreatedAt.Format(time.RFC3339),
@@ -241,4 +239,9 @@ func getIntQuery(c *gin.Context, key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+// generateQuestionID generates a UUID for the question
+func generateQuestionID() string {
+	return uuid.New().String()
 } 

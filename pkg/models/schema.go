@@ -137,7 +137,7 @@ type Question struct {
 	Course           *Course      `gorm:"foreignKey:CourseID" json:"course,omitempty"`
 	SessionID        string       `gorm:"type:char(10)" json:"sessionId"`
 	Session          *Session     `gorm:"foreignKey:SessionID" json:"session,omitempty"`
-	ImageLinks       []string     `gorm:"type:json" json:"imageLinks,omitempty"`
+	ImageLinks       []string     `gorm:"type:json;serializer:json" json:"imageLinks,omitempty"`
 	Lecturer         *string      `json:"lecturer,omitempty"`
 	TimeAllowed      *int         `json:"timeAllowed,omitempty"`
 	DocLink          *string      `json:"docLink,omitempty"`
