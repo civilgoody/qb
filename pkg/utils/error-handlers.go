@@ -35,41 +35,56 @@ func BindAndValidate[T any](c *gin.Context, input *T) bool {
     return false // not handled
 }
 
+// MySQL error code mappings
+var mysqlErrorMap = map[uint16]*BusinessError{
+	1452: ErrForeignKey, // ER_NO_REFERENCED_ROW_2 - foreign key constraint fails
+	1451: {Code: 400, Message: "Cannot delete resource: it is referenced by other records"}, // ER_ROW_IS_REFERENCED_2
+	1062: ErrDuplicate, // ER_DUP_ENTRY - duplicate entry for unique key
+	1406: {Code: 400, Message: "Data too long for one or more fields"}, // ER_DATA_TOO_LONG
+}
+
 // HandleDatabaseError processes database errors with proper error code detection
 func HandleDatabaseError(c *gin.Context, err error) {
-	// First, try to handle MySQL-specific errors by error code (more reliable)
+	// Handle MySQL-specific errors using map lookup
 	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-		switch mysqlErr.Number {
-		case 1452: // ER_NO_REFERENCED_ROW_2 - foreign key constraint fails (INSERT/UPDATE)
-			HandleError(c, ErrForeignKey)
-			return
-		case 1451: // ER_ROW_IS_REFERENCED_2 - cannot delete parent row (foreign key constraint)
-			HandleError(c, &BusinessError{
-				Code: 400, 
-				Message: "Cannot delete resource: it is referenced by other records",
-			})
-			return
-		case 1062: // ER_DUP_ENTRY - duplicate entry for unique key
-			HandleError(c, ErrDuplicate)
-			return
-		case 1406: // ER_DATA_TOO_LONG - data too long for column
-			HandleError(c, &BusinessError{
-				Code: 400,
-				Message: "Data too long for one or more fields",
-			})
+		if businessErr, exists := mysqlErrorMap[mysqlErr.Number]; exists {
+			HandleError(c, businessErr)
 			return
 		}
 	}
 	
-	// If it's not a MySQL error, or an unhandled MySQL error, fallback to generic checks.
-	// Check if it's a GORM No Records Found error specifically
+	// Handle GORM-specific errors
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		HandleError(c, ErrNotFound)
 		return
 	}
 	
-	// Log the unhandled database error for debugging
+	// Log unhandled database error for debugging
 	fmt.Printf("Unhandled database error: %v\n", err)
+	HandleError(c, ErrDatabase)
+}
+
+// HandleDatabaseErrorWithContext processes database errors with specific resource context
+func HandleDatabaseErrorWithContext(c *gin.Context, err error, resourceContext string) {
+	// Handle MySQL-specific errors using map lookup
+	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+		if businessErr, exists := mysqlErrorMap[mysqlErr.Number]; exists {
+			HandleError(c, businessErr)
+			return
+		}
+	}
+	
+	// Handle GORM-specific errors with context
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		HandleError(c, &BusinessError{
+			Code:    404,
+			Message: fmt.Sprintf("%s not found", resourceContext),
+		})
+		return
+	}
+	
+	// Log unhandled database error for debugging
+	fmt.Printf("Unhandled database error for %s: %v\n", resourceContext, err)
 	HandleError(c, ErrDatabase)
 }
 
