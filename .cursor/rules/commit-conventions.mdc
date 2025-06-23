@@ -1,0 +1,88 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Commit Conventions
+
+## Commit Message Format
+Use conventional commit format: `type(scope): description`
+
+### Types
+- `feat`: New features
+- `fix`: Bug fixes
+- `refactor`: Code refactoring
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks, dependencies, etc.
+
+### Scopes
+- `deps`: Dependency changes
+- `upload`: Image upload functionality
+- `models`: Database models and DTOs
+- `handlers`: HTTP request handlers
+- `routes`: API route definitions
+- `app`: Main application setup
+- `admin`: Administrative features
+- `seed`: Database seeding
+- `api`: API-related changes
+- `ui`: User interface changes
+
+### Examples
+- `feat(upload): add Cloudinary integration and rate limiting`
+- `fix(seed): update session IDs to match new format`
+- `refactor(handlers): simplify error handling with context`
+- `feat(models): add upload DTOs and temporary upload tracking`
+
+## File Grouping for Commits
+
+### Dependencies
+- `go.mod`, `go.sum`
+
+### Core Infrastructure
+- `pkg/utils/cloudinary.go`
+- `pkg/utils/rate-limit.go`
+- `pkg/utils/request-tracker.go`
+
+### Data Models
+- `pkg/models/upload-dto.go`
+- `pkg/models/schema.go`
+- `pkg/models/all.go`
+
+### Business Logic
+- `internal/handlers/upload.go`
+- `internal/handlers/questions.go`
+- `internal/handlers/simple.go`
+
+### API Layer
+- `internal/routes/r.go`
+
+### Application Setup
+- `main.go`
+
+### Data Seeding
+- `cmd/seed/main.go`
+
+## One-Liner Commit Pattern
+For multiple related commits, use this pattern with comments:
+
+```bash
+# 1. Add Dependencies
+git add go.mod go.sum && git commit -m "feat(deps): add Cloudinary SDK and UUID package"
+
+# 2. Add Core Infrastructure
+git add pkg/utils/cloudinary.go pkg/utils/rate-limit.go pkg/utils/request-tracker.go && git commit -m "feat(upload): add Cloudinary integration and rate limiting"
+
+# 3. Add Data Models
+git add pkg/models/upload-dto.go pkg/models/schema.go pkg/models/all.go && git commit -m "feat(models): add upload DTOs and temporary upload tracking"
+```
+
+## Guidelines
+1. Group related changes together
+2. Keep commits focused and atomic
+3. Use descriptive but concise commit messages
+4. Reference specific files when relevant: [filename.ext](mdc:filename.ext)
+5. Follow the established patterns in the codebase
+6. Use `&&` to chain git add and commit commands
+7. Add comments above each commit group for clarity
