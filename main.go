@@ -14,8 +14,19 @@ func main() {
 	// Load .env file once at application startup
 	utils.LoadDotEnv()
 
+	// Initialize Cloudinary
+	if err := utils.InitCloudinary(); err != nil {
+		log.Fatalf("Failed to initialize Cloudinary: %v", err)
+	}
+
 	// Connect to the database
 	database.ConnectDB()
+
+	// Initialize request tracker with database connection
+	utils.InitRequestTracker(database.DB)
+
+	// Initialize rate limiters
+	utils.InitRateLimiters()
 
 	// Use gin.New() instead of gin.Default() to have full control over middleware
 	r := gin.New()
