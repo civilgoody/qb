@@ -55,14 +55,14 @@ This plan outlines the implementation of a staged image upload feature for a pub
      - **Input:** `*multipart.FileHeader` and `requestID`.
      - **Output:** The temporary `secure_url`, `public_id`, and error.
 
-3. **Input/Output DTOs (`pkg/models/upload_input.go`)**
+3. **Input/Output DTOs (`pkg/models/upload-dto.go`)**
 
    ```go
    package models
 
    import "mime/multipart"
 
-   type UploadImagesInput struct {
+   type UploadImagesDTO struct {
        ImageFiles []*multipart.FileHeader `form:"imageFiles" binding:"required,max=5"`
    }
 
@@ -89,7 +89,7 @@ This plan outlines the implementation of a staged image upload feature for a pub
 
    - **Implement `UploadImages(c *gin.Context)`:**
      - Generate `requestID` using `utils.GenerateRequestID()`.
-     - Bind `UploadImagesInput` and validate files.
+     - Bind `UploadImagesDTO` and validate files.
      - **Bounded Concurrency:** Use worker pool pattern (max 10 concurrent uploads).
      - Launch goroutines for each file upload with `cloudinary.UploadFileToTemp()`.
      - Collect results and store successful uploads in request tracker.
@@ -116,10 +116,10 @@ This plan outlines the implementation of a staged image upload feature for a pub
      - **Input:** Temporary `public_id` and `questionID`.
      - **Output:** Final permanent `secure_url` or error.
 
-2. **Updated Question Input DTO (`pkg/models/question_input.go`)**
+2. **Updated Question Input DTO (`pkg/models/question-dto.go`)**
 
    ```go
-   type CreateQuestionInput struct {
+   type CreateQuestionDTO struct {
        // ... existing fields ...
        RequestID    string   `json:"requestId" binding:"required,uuid"`
        TempImageURLs []string `json:"tempImageUrls,omitempty" validate:"omitempty,dive,url"`
@@ -146,7 +146,7 @@ This plan outlines the implementation of a staged image upload feature for a pub
 
 4. **Handler (`internal/handlers/qb.go`)**
    - **Implement `CreateQuestion(c *gin.Context)`:**
-     - Bind `CreateQuestionInput` and validate.
+     - Bind `CreateQuestionDTO` and validate.
      - **Request Validation:** Use `request_tracker.ValidateAndCleanupRequest()` to verify requestID and publicIDs match.
      - **Bounded Concurrency:** Use worker pool for concurrent image moves.
      - Loop through `input.TempPublicIDs`, launching goroutines for `cloudinary.MoveFileToPermanent()`.
