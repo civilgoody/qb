@@ -2,6 +2,7 @@ package routes
 
 import (
 	"qb/internal/handlers"
+	"qb/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,5 +42,17 @@ func SetupRoutes(router *gin.Engine) {
 			department.GET("", handlers.GetDepartments)
 			department.DELETE("/:id", handlers.DeleteDepartment)
 		}
+		question := v1.Group("/question")
+		{
+			question.POST("", handlers.CreateQuestion)
+			question.GET("", handlers.GetQuestions)
+			question.GET("/:id", handlers.GetQuestionByID)
+		}
+		request := v1.Group("/request")
+		{
+			request.GET("", handlers.GetRequests)
+		}
+		// Image upload endpoint with rate limiting
+		v1.POST("/upload-images", utils.RateLimitMiddleware(utils.UploadRateLimiter), handlers.UploadImages)
 	}
 }
