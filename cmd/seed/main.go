@@ -121,19 +121,19 @@ func seedUsers() {
 func seedSessions() {
 	sessions := []models.Session{
 		{
-			ID:        "2023/2024",
+			ID:        "23-24",
 			StartDate: 2023,
 			EndDate:   2024,
 			Info:      stringPtr("Academic Session 2023/2024"),
 		},
 		{
-			ID:        "2024/2025",
+			ID:        "24-25",
 			StartDate: 2024,
 			EndDate:   2025,
 			Info:      stringPtr("Academic Session 2024/2025"),
 		},
 		{
-			ID:        "2022/2023",
+			ID:        "22-23",
 			StartDate: 2022,
 			EndDate:   2023,
 			Info:      stringPtr("Academic Session 2022/2023"),
@@ -200,7 +200,7 @@ func seedQuestions() {
 		{
 			ID:          "q1",
 			CourseID:    "CEG543",
-			SessionID:   "2023/2024",
+			SessionID:   "23-24",
 			ImageLinks:  []string{"https://example.com/image1.jpg", "https://example.com/image2.jpg"},
 			Lecturer:    stringPtr("Prof. Johnson"),
 			TimeAllowed: intPtr(180),
@@ -214,7 +214,7 @@ func seedQuestions() {
 		{
 			ID:          "q2",
 			CourseID:    "EEE321",
-			SessionID:   "2023/2024",
+			SessionID:   "23-24",
 			ImageLinks:  []string{"https://example.com/image3.jpg"},
 			Lecturer:    stringPtr("Dr. Williams"),
 			TimeAllowed: intPtr(120),
@@ -227,7 +227,7 @@ func seedQuestions() {
 		{
 			ID:        "q3",
 			CourseID:  "CSC412",
-			SessionID: "2024/2025",
+			SessionID: "24-25",
 			Type:      models.QuestionTypeExam,
 			Downloads: intPtr(12),
 			Views:     intPtr(34),
