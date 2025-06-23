@@ -98,8 +98,6 @@ func UploadImages(c *gin.Context) {
 		}
 	}
 
-	fmt.Println(successfulPublicIDs)
-
 	// Store successful uploads in request tracker
 	if len(successfulPublicIDs) > 0 {
 		if err := utils.Tracker.StoreTemporaryUpload(requestID, successfulPublicIDs); err != nil {
@@ -108,16 +106,8 @@ func UploadImages(c *gin.Context) {
 		}
 	}
 
-	// Convert results to interface{} slice for the generic analyzer
-	interfaceResults := make([]interface{}, len(results))
-	for i, result := range results {
-		interfaceResults[i] = result
-	}
-
 	// Analyze upload results using the helper
-	analysis := utils.AnalyzeUploadResults(interfaceResults, 
-		func(r interface{}) string { return r.(models.UploadResult).Error },
-		func(r interface{}) string { return r.(models.UploadResult).OriginalFilename })
+	analysis := utils.AnalyzeUploadResults(results)
 
 	// Prepare response
 	response := models.UploadResponse{

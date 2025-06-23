@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"qb/pkg/models"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -120,7 +121,7 @@ type UploadResultAnalysis struct {
 }
 
 // AnalyzeUploadResults categorizes upload errors and determines appropriate response
-func AnalyzeUploadResults(results []interface{}, getError func(interface{}) string, getFilename func(interface{}) string) *UploadResultAnalysis {
+func AnalyzeUploadResults(results []models.UploadResult) *UploadResultAnalysis {
 	analysis := &UploadResultAnalysis{
 		NetworkErrors: make([]string, 0),
 		UploadErrors:  make([]string, 0),
@@ -128,13 +129,13 @@ func AnalyzeUploadResults(results []interface{}, getError func(interface{}) stri
 	}
 
 	for _, result := range results {
-		errorMsg := getError(result)
+		errorMsg := result.Error
 		if errorMsg != "" {
 			analysis.HasErrors = true
-			filename := getFilename(result)
+			filename := result.OriginalFilename
 			
 			// Categorize the error type
-			if isNetworkError(errorMsg) {
+			if isNetworkError(result.Error) {
 				analysis.NetworkErrors = append(analysis.NetworkErrors, fmt.Sprintf("%s: %s", filename, errorMsg))
 			} else {
 				analysis.UploadErrors = append(analysis.UploadErrors, fmt.Sprintf("%s: %s", filename, errorMsg))
