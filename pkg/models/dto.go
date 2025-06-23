@@ -16,11 +16,11 @@ type CreateCourseDTO struct {
 
 // ParseCourseCode parses a 6-character course code (e.g., "CEG543")
 // Returns: departmentCode, level, semester, finalDigit, error
-func (dto *CreateCourseDTO) ParseCourseCode() (string, int, int, string, error) {
+func (dto *CreateCourseDTO) ParseCourseCode() (string, int, int, error) {
 	code := strings.ToUpper(dto.Code)
 	
 	if len(code) != 6 {
-		return "", 0, 0, "", fmt.Errorf("course code must be exactly 6 characters")
+		return "", 0, 0, fmt.Errorf("course code must be exactly 6 characters")
 	}
 
 	// Extract department code (first 3 characters)
@@ -30,7 +30,7 @@ func (dto *CreateCourseDTO) ParseCourseCode() (string, int, int, string, error) 
 	levelChar := code[3:4]
 	levelDigit, err := strconv.Atoi(levelChar)
 	if err != nil || levelDigit < 1 || levelDigit > 5 {
-		return "", 0, 0, "", fmt.Errorf("level must be a digit between 1-5")
+		return "", 0, 0, fmt.Errorf("level must be a digit between 1-5")
 	}
 	level := levelDigit * 100 // Convert 1->100, 2->200, etc.
 
@@ -38,7 +38,7 @@ func (dto *CreateCourseDTO) ParseCourseCode() (string, int, int, string, error) 
 	semesterChar := code[4:5]
 	semesterDigit, err := strconv.Atoi(semesterChar)
 	if err != nil {
-		return "", 0, 0, "", fmt.Errorf("semester indicator must be a digit")
+		return "", 0, 0, fmt.Errorf("semester indicator must be a digit")
 	}
 	
 	var semester int
@@ -49,10 +49,10 @@ func (dto *CreateCourseDTO) ParseCourseCode() (string, int, int, string, error) 
 	}
 
 	// Extract final digit (6th character) - user's choice
-	finalDigit := code[5:6]
-	if _, err := strconv.Atoi(finalDigit); err != nil {
-		return "", 0, 0, "", fmt.Errorf("final character must be a digit")
+	// finalDigit := 
+	if _, err := strconv.Atoi(code[5:6]); err != nil {
+		return "", 0, 0, fmt.Errorf("final character must be a digit")
 	}
 
-	return departmentCode, level, semester, finalDigit, nil
+	return departmentCode, level, semester, nil
 }

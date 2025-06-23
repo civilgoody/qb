@@ -40,7 +40,7 @@ func CreateCourse(c *gin.Context) {
 	}
 	
 	// Step 2: Parse the course code
-	departmentCode, level, semester, _, err := input.ParseCourseCode()
+	departmentCode, level, semester, err := input.ParseCourseCode()
 	if err != nil {
 		utils.HandleError(c, utils.NewValidationError(err.Error()))
 		return
