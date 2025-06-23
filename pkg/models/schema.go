@@ -123,32 +123,34 @@ type Session struct {
 // - ID: Translated from String @id @map("_id").
 // - CourseID: Foreign key to Course (6-character course code)
 // - SessionID/UploaderID: Foreign keys.
-// - ImageLinks: Array of strings. `gorm:"type:text[]"` specifies a PostgreSQL array type.
+// - ImageLinks: Array of strings. `gorm:"type:json"` specifies a JSON array type.
 // - Lecturer/TimeAllowed/DocLink/Tips: Nullable fields.
 // - Type: Mapped to custom QuestionType enum.
-// - Downloads/Views: Integer fields.
+// - Downloads/Views: Integer fields with default 0.
 // - Approved: Boolean with default false.
+// - ProcessingStatus: Track image processing status.
 // - CreatedAt/UpdatedAt: Automatically managed timestamps.
 // - Course/Session/Uploader: Many-to-one relationships.
 type Question struct {
-	ID          string       `gorm:"primaryKey;type:char(36);default:(uuid())" json:"id"`
-	CourseID    string       `gorm:"type:varchar(6)" json:"courseId"`
-	Course      *Course      `gorm:"foreignKey:CourseID" json:"course,omitempty"`
-	SessionID   string       `gorm:"type:char(36)" json:"sessionId"`
-	Session     *Session     `gorm:"foreignKey:SessionID" json:"session,omitempty"`
-	ImageLinks  []string     `gorm:"type:json" json:"imageLinks,omitempty"`
-	Lecturer    *string      `json:"lecturer,omitempty"`
-	TimeAllowed *int         `json:"timeAllowed,omitempty"`
-	DocLink     *string      `json:"docLink,omitempty"`
-	Tips        *string      `json:"tips,omitempty"`
-	Type        QuestionType `json:"type"`
-	Downloads   *int         `json:"downloads,omitempty"`
-	Views       *int         `json:"views,omitempty"`
-	Approved    bool         `gorm:"default:false" json:"approved"`
-	UploaderID  *string      `gorm:"type:char(36)" json:"uploaderId,omitempty"`
-	Uploader    *User        `gorm:"foreignKey:UploaderID" json:"uploader,omitempty"`
-	CreatedAt   time.Time    `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt   time.Time    `gorm:"autoUpdateTime" json:"updatedAt"`
+	ID               string       `gorm:"primaryKey;type:char(36);default:(uuid())" json:"id"`
+	CourseID         string       `gorm:"type:varchar(6)" json:"courseId"`
+	Course           *Course      `gorm:"foreignKey:CourseID" json:"course,omitempty"`
+	SessionID        string       `gorm:"type:char(10)" json:"sessionId"`
+	Session          *Session     `gorm:"foreignKey:SessionID" json:"session,omitempty"`
+	ImageLinks       []string     `gorm:"type:json" json:"imageLinks,omitempty"`
+	Lecturer         *string      `json:"lecturer,omitempty"`
+	TimeAllowed      *int         `json:"timeAllowed,omitempty"`
+	DocLink          *string      `json:"docLink,omitempty"`
+	Tips             *string      `json:"tips,omitempty"`
+	Type             QuestionType `json:"type"`
+	Downloads        *int         `gorm:"default:0" json:"downloads,omitempty"`
+	Views            *int         `gorm:"default:0" json:"views,omitempty"`
+	Approved         bool         `gorm:"default:false" json:"approved"`
+	ProcessingStatus *string      `gorm:"default:'pending'" json:"processingStatus,omitempty"`
+	UploaderID       *string      `gorm:"type:char(36)" json:"uploaderId,omitempty"`
+	Uploader         *User        `gorm:"foreignKey:UploaderID" json:"uploader,omitempty"`
+	CreatedAt        time.Time    `gorm:"autoCreateTime" json:"createdAt"`
+	UpdatedAt        time.Time    `gorm:"autoUpdateTime" json:"updatedAt"`
 }
 
 // Course model translated from Prisma schema.
@@ -174,4 +176,12 @@ type Course struct {
 	Level         *Level       `gorm:"foreignKey:LevelID" json:"level,omitempty"`
 	Questions     []Question   `gorm:"foreignKey:CourseID" json:"questions,omitempty"`
 	Departments   []Department `gorm:"many2many:department_courses;constraint:OnDelete:CASCADE;" json:"departments,omitempty"`
+}
+
+// TemporaryUpload model for tracking temporary upload requests
+type TemporaryUpload struct {
+	RequestID string    `gorm:"primaryKey;type:char(36)" json:"requestId"`
+	PublicIDs string    `gorm:"type:text" json:"publicIds"` // Store as comma-separated string
+	ExpiresAt time.Time `gorm:"index" json:"expiresAt"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"createdAt"`
 }

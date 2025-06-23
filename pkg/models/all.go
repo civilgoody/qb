@@ -8,4 +8,5 @@ var AllModels = []any{
 	&Course{},
 	&Question{},
 	&Session{},
+	&TemporaryUpload{},
 }
