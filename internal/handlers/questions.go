@@ -14,6 +14,57 @@ import (
 	"gorm.io/gorm"
 )
 
+// GetQuestions handles retrieving questions with optional filtering
+func GetQuestions(c *gin.Context) {
+	var questions []models.Question
+	
+	query := database.DB
+	
+	// Add filtering for approved questions only (public endpoint)
+	// query = query.Where("approved = ?", true)
+	
+	// Optional filtering by course
+	if courseID := c.Query("courseId"); courseID != "" {
+		query = query.Where("course_id = ?", courseID)
+	}
+	
+	// Optional filtering by session
+	if sessionID := c.Query("sessionId"); sessionID != "" {
+		query = query.Where("session_id = ?", sessionID)
+	}
+	
+	// Optional filtering by type
+	if questionType := c.Query("type"); questionType != "" {
+		query = query.Where("type = ?", questionType)
+	}
+	
+	// Pagination
+	page := getIntQuery(c, "page", 1)
+	limit := getIntQuery(c, "limit", 20)
+	offset := (page - 1) * limit
+	
+	if utils.HandleGetResources(c, query.Offset(offset).Limit(limit), &questions) {
+		return
+	}
+}
+
+// GetQuestionByID handles retrieving a single question by ID
+func GetQuestionByID(c *gin.Context) {
+	id := c.Param("id")
+	
+	var question models.Question
+	if err := database.DB.Preload("Course").Preload("Session").Preload("Uploader").
+		Where("id = ? AND approved = ?", id, true).First(&question).Error; err != nil {
+		utils.HandleDatabaseErrorWithContext(c, err, "Question")
+		return
+	}
+	
+	// Increment view count
+	database.DB.Model(&question).Update("views", gorm.Expr("views + 1"))
+	
+	utils.SuccessResponse(c, question)
+}
+
 // CreateQuestion handles question creation with image finalization
 func CreateQuestion(c *gin.Context) {
 	// Bind and validate the DTO
@@ -22,25 +73,55 @@ func CreateQuestion(c *gin.Context) {
 		return
 	}
 
-	// Validate that the course exists
+	// Validate course and session existence
+	if !validateCourseAndSession(c, input.CourseID, input.SessionID) {
+		return
+	}
+
+	// Process upload results and get temp public IDs
+	tempPublicIDs, valid := processUploadResults(c, input.UploadResults)
+	if !valid {
+		return
+	}
+
+	// Generate question ID and process images
+	questionID := generateQuestionID(input.CourseID, input.SessionID, input.Type)
+	finalImageURLs, processingStatus := processQuestionImages(tempPublicIDs, questionID)
+
+	// Create or update the question
+	question, message, created := createOrUpdateQuestion(c, questionID, input, finalImageURLs, processingStatus)
+	if question == nil {
+		return
+	}
+
+	// Build and send response
+	sendQuestionResponse(c, question, finalImageURLs, tempPublicIDs, processingStatus, message, created)
+}
+
+// validateCourseAndSession validates that the course and session exist
+func validateCourseAndSession(c *gin.Context, courseID, sessionID string) bool {
 	var course models.Course
-	if err := database.DB.Where("id = ?", input.CourseID).First(&course).Error; err != nil {
+	if err := database.DB.Where("id = ?", courseID).First(&course).Error; err != nil {
 		utils.HandleDatabaseErrorWithContext(c, err, "Course")
-		return
+		return false
 	}
 
-	// Validate that the session exists
 	var session models.Session
-	if err := database.DB.Where("id = ?", input.SessionID).First(&session).Error; err != nil {
+	if err := database.DB.Where("id = ?", sessionID).First(&session).Error; err != nil {
 		utils.HandleDatabaseErrorWithContext(c, err, "Session")
-		return
+		return false
 	}
 
-	// Extract and validate upload results if provided
+	return true
+}
+
+// processUploadResults extracts and validates upload results
+func processUploadResults(c *gin.Context, uploadResults *models.UploadResponse) ([]string, bool) {
 	var tempPublicIDs []string
-	if input.UploadResults != nil && input.UploadResults.RequestID != "" {
+	
+	if uploadResults != nil && uploadResults.RequestID != "" {
 		// Extract public IDs from successful uploads
-		for _, result := range input.UploadResults.Results {
+		for _, result := range uploadResults.Results {
 			if result.Error == "" && result.PublicID != "" {
 				tempPublicIDs = append(tempPublicIDs, result.PublicID)
 			}
@@ -48,80 +129,51 @@ func CreateQuestion(c *gin.Context) {
 		
 		// Validate request ID and temporary uploads
 		if len(tempPublicIDs) > 0 {
-			isValid := utils.Tracker.ValidateAndCleanupRequest(input.UploadResults.RequestID, tempPublicIDs)
+			isValid := utils.Tracker.ValidateAndCleanupRequest(uploadResults.RequestID, tempPublicIDs)
 			if !isValid {
 				utils.HandleError(c, utils.NewValidationError("Invalid or expired upload request"))
-				return
+				return nil, false
 			}
 		}
 	}
 
-	// Generate question ID first so we can use it for image processing
-	questionID := generateQuestionID(input.CourseID, input.SessionID, input.Type)
-	
-	// Process images first if any were uploaded
-	var finalImageURLs []string
-	var processingStatus = "processed"
-	
-	if len(tempPublicIDs) > 0 {
-		finalImageURLs, processingStatus = processQuestionImages(tempPublicIDs, questionID)
-	}
+	return tempPublicIDs, true
+}
 
+// createOrUpdateQuestion creates a new question or updates an existing unapproved one
+func createOrUpdateQuestion(c *gin.Context, questionID string, input models.CreateQuestionDTO, finalImageURLs []string, processingStatus string) (*models.Question, string, bool) {
 	var question models.Question
-	message := "Question created successfully and is pending approval"
-
-	// Check if a question with this ID already exists and is not approved
-	dbResult := database.DB.Where("id = ? AND approved = ?", questionID, false).First(&question)
-	fmt.Println(dbResult.Error)
 	
+	// Check if question exists and is not approved
+	dbResult := database.DB.Where("id = ? AND approved = ?", questionID, false).First(&question)
 
 	if dbResult.Error == nil {
-		// Question exists and is not approved, append image links
-		question.ImageLinks = append(question.ImageLinks, finalImageURLs...)
-		if err := database.DB.Save(&question).Error; err != nil {
-			utils.HandleDatabaseError(c, err)
-			return
-		}
-		message = "Images appended to existing unapproved question successfully"
-
-		// If we used a temp ID for images, update them to use the real question ID
-		if len(finalImageURLs) > 0 && len(tempPublicIDs) > 0 {
-			fmt.Printf("Successfully updated question %s with %d images, status: %s\n", question.ID, len(finalImageURLs), processingStatus)
-		}
-
-		// Prepare response
-		response := models.QuestionResponse{
-			ID:               question.ID,
-			CourseID:         question.CourseID,
-			SessionID:        question.SessionID,
-			Type:             question.Type,
-			ImageCount:       len(question.ImageLinks),
-			ImageLinks:       question.ImageLinks,
-			ProcessingStatus: processingStatus,
-			Approved:         question.Approved,
-			CreatedAt:        question.CreatedAt.Format(time.RFC3339),
-			Message:          message,
-		}
-
-		// Add warning message if some images failed
-		if processingStatus != "processed" && len(finalImageURLs) > 0 {
-			response.Message = "Question created successfully with some image processing issues"
-		} else if len(finalImageURLs) == 0 && len(tempPublicIDs) > 0 {
-			response.Message = "Question created successfully but all images failed to process"
-			response.ProcessingStatus = "failed"
-		}
-
-		utils.SuccessResponse(c, response)
-		return
+		// Update existing unapproved question
+		return updateExistingQuestion(c, &question, finalImageURLs)
 	}
 
 	if dbResult.Error != gorm.ErrRecordNotFound {
 		utils.HandleDatabaseError(c, dbResult.Error)
-		return
+		return nil, "", false
 	}
 
-	// Question does not exist or is already approved, create a new one
-	question = models.Question{
+	// Create new question
+	return createNewQuestion(c, questionID, input, finalImageURLs, processingStatus)
+}
+
+// updateExistingQuestion appends images to an existing unapproved question
+func updateExistingQuestion(c *gin.Context, question *models.Question, finalImageURLs []string) (*models.Question, string, bool) {
+	question.ImageLinks = append(question.ImageLinks, finalImageURLs...)
+	if err := database.DB.Save(question).Error; err != nil {
+		utils.HandleDatabaseError(c, err)
+		return nil, "", false
+	}
+	return question, "Images appended to existing unapproved question successfully", false
+}
+
+// createNewQuestion creates a new question
+func createNewQuestion(c *gin.Context, questionID string, input models.CreateQuestionDTO, finalImageURLs []string, processingStatus string) (*models.Question, string, bool) {
+	question := models.Question{
 		ID:               questionID,
 		CourseID:         input.CourseID,
 		SessionID:        input.SessionID,
@@ -130,22 +182,30 @@ func CreateQuestion(c *gin.Context) {
 		TimeAllowed:      input.TimeAllowed,
 		DocLink:          input.DocLink,
 		Tips:             input.Tips,
-		Approved:         false, // Default to pending approval
-		Downloads:        new(int), // Initialize to 0
-		Views:            new(int), // Initialize to 0
+		Approved:         false,
+		Downloads:        new(int),
+		Views:            new(int),
 		ImageLinks:       finalImageURLs,
 		ProcessingStatus: &processingStatus,
 	}
 
-	// Create the question in database with all data
 	if err := database.DB.Create(&question).Error; err != nil {
 		utils.HandleDatabaseError(c, err)
-		return
+		return nil, "", false
 	}
 
-	// If we used a temp ID for images, update them to use the real question ID
+	return &question, "Question created successfully and is pending approval", true
+}
+
+// sendQuestionResponse builds and sends the final response
+func sendQuestionResponse(c *gin.Context, question *models.Question, finalImageURLs, tempPublicIDs []string, processingStatus, message string, created bool) {
+	// Log success
 	if len(finalImageURLs) > 0 && len(tempPublicIDs) > 0 {
-		fmt.Printf("Successfully created question %s with %d images, status: %s\n", question.ID, len(finalImageURLs), processingStatus)
+		action := "created"
+		if !created {
+			action = "updated"
+		}
+		fmt.Printf("Successfully %s question %s with %d images, status: %s\n", action, question.ID, len(finalImageURLs), processingStatus)
 	}
 
 	// Prepare response
@@ -154,7 +214,7 @@ func CreateQuestion(c *gin.Context) {
 		CourseID:         question.CourseID,
 		SessionID:        question.SessionID,
 		Type:             question.Type,
-		ImageCount:       len(question.ImageLinks), // Use question.ImageLinks which now includes all images
+		ImageCount:       len(question.ImageLinks),
 		ImageLinks:       question.ImageLinks,
 		ProcessingStatus: processingStatus,
 		Approved:         question.Approved,
@@ -162,7 +222,7 @@ func CreateQuestion(c *gin.Context) {
 		Message:          message,
 	}
 
-	// Add warning message if some images failed
+	// Adjust message based on processing status
 	if processingStatus != "processed" && len(finalImageURLs) > 0 {
 		response.Message = "Question created successfully with some image processing issues"
 	} else if len(finalImageURLs) == 0 && len(tempPublicIDs) > 0 {
@@ -175,6 +235,9 @@ func CreateQuestion(c *gin.Context) {
 
 // processQuestionImages handles concurrent image processing with error resilience
 func processQuestionImages(tempPublicIDs []string, questionID string) ([]string, string) {
+	if len(tempPublicIDs) == 0 {
+		return []string{}, "processed"
+	}
 	const maxConcurrentMoves = 5
 	semaphore := make(chan struct{}, maxConcurrentMoves)
 	
@@ -229,57 +292,6 @@ func processQuestionImages(tempPublicIDs []string, questionID string) ([]string,
 	} 
 
 	return finalURLs, status
-}
-
-// GetQuestions handles retrieving questions with optional filtering
-func GetQuestions(c *gin.Context) {
-	var questions []models.Question
-	
-	query := database.DB
-	
-	// Add filtering for approved questions only (public endpoint)
-	// query = query.Where("approved = ?", true)
-	
-	// Optional filtering by course
-	if courseID := c.Query("courseId"); courseID != "" {
-		query = query.Where("course_id = ?", courseID)
-	}
-	
-	// Optional filtering by session
-	if sessionID := c.Query("sessionId"); sessionID != "" {
-		query = query.Where("session_id = ?", sessionID)
-	}
-	
-	// Optional filtering by type
-	if questionType := c.Query("type"); questionType != "" {
-		query = query.Where("type = ?", questionType)
-	}
-	
-	// Pagination
-	page := getIntQuery(c, "page", 1)
-	limit := getIntQuery(c, "limit", 20)
-	offset := (page - 1) * limit
-	
-	if utils.HandleGetResources(c, query.Offset(offset).Limit(limit), &questions) {
-		return
-	}
-}
-
-// GetQuestionByID handles retrieving a single question by ID
-func GetQuestionByID(c *gin.Context) {
-	id := c.Param("id")
-	
-	var question models.Question
-	if err := database.DB.Preload("Course").Preload("Session").Preload("Uploader").
-		Where("id = ? AND approved = ?", id, true).First(&question).Error; err != nil {
-		utils.HandleDatabaseErrorWithContext(c, err, "Question")
-		return
-	}
-	
-	// Increment view count
-	database.DB.Model(&question).Update("views", gorm.Expr("views + 1"))
-	
-	utils.SuccessResponse(c, question)
 }
 
 // Helper function to get integer query parameters
