@@ -40,7 +40,7 @@ type QuestionResponse struct {
 	ID               string   `json:"id"`
 	CourseID         string   `json:"courseId"`
 	SessionID        string   `json:"sessionId"`
-	Type             string   `json:"type"`
+	Type             QuestionType   `json:"type"`
 	ImageCount       int      `json:"imageCount"`
 	ImageLinks       []string `json:"imageLinks,omitempty"`
 	ProcessingStatus string   `json:"processingStatus"`
