@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"qb/internal/handlers"
 	"qb/internal/routes"
 	"qb/pkg/database"
 	"qb/pkg/utils"
@@ -16,22 +17,20 @@ func init() {
 	database.ConnectDB()
 	utils.InitRequestTracker(database.DB)
 	utils.InitRateLimiters()
+	handlers.InitGenericService()
+	handlers.InitCourseService()
 }
 
 func main() {
-
-	// Use gin.New() instead of gin.Default() to have full control over middleware
 	r := gin.New()
 	
-	// Add custom middleware
 	r.Use(gin.Logger())
-	r.Use(utils.CustomRecovery()) // Use our custom recovery instead of default
+	r.Use(utils.CustomRecovery())
 	
 	r.RedirectTrailingSlash = false
 
 	routes.SetupRoutes(r)
 
-	// Start the server
 	port := utils.GetEnvFatal("PORT")
 
 	log.Printf("Server starting on :%s", port)
