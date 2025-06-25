@@ -173,6 +173,13 @@ func updateExistingQuestion(c *gin.Context, question *models.Question, finalImag
 
 // createNewQuestion creates a new question
 func createNewQuestion(c *gin.Context, questionID string, input models.CreateQuestionDTO, finalImageURLs []string, processingStatus string) (*models.Question, string, bool) {
+	// Get the current user ID from context
+	userID, exists := utils.GetCurrentUserID(c)
+	if !exists {
+		utils.ErrorResponse(c, 401, utils.ErrUnauthorized, "User not found in context")
+		return nil, "", false
+	}
+
 	question := models.Question{
 		ID:               questionID,
 		CourseID:         input.CourseID,
@@ -187,6 +194,7 @@ func createNewQuestion(c *gin.Context, questionID string, input models.CreateQue
 		Views:            new(int),
 		ImageLinks:       finalImageURLs,
 		ProcessingStatus: &processingStatus,
+		UploaderID:       &userID, // Set the uploader from auth context
 	}
 
 	if err := database.DB.Create(&question).Error; err != nil {
