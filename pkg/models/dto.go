@@ -56,3 +56,29 @@ func (dto *CreateCourseDTO) ParseCourseCode() (string, int, int, error) {
 
 	return departmentCode, level, semester, nil
 }
+
+// Auth DTOs
+type LoginDTO struct {
+	Email    string `json:"email" binding:"required,email" validate:"required,email"`
+	Password string `json:"password" binding:"required,min=6" validate:"required,min=6"`
+}
+
+type RegisterDTO struct {
+	FirstName    string  `json:"firstName" binding:"required" validate:"required"`
+	LastName     *string `json:"lastName,omitempty"`
+	Email        string  `json:"email" binding:"required,email" validate:"required,email"`
+	Password     string  `json:"password" binding:"required,min=6" validate:"required,min=6"`
+	DepartmentID *string `json:"departmentId,omitempty"`
+	LevelID      *int    `json:"levelId,omitempty"`
+	Semester     *int    `json:"semester,omitempty"`
+}
+
+type AuthResponse struct {
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
+	User         User   `json:"user"`
+}
+
+type RefreshTokenDTO struct {
+	RefreshToken string `json:"refreshToken" binding:"required" validate:"required"`
+}

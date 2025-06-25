@@ -34,6 +34,8 @@ func (e *BusinessError) Error() string {
 // Common business errors
 var (
 	ErrValidation    = &BusinessError{Code: 400, Message: "Validation failed"}
+	ErrUnauthorized  = &BusinessError{Code: 401, Message: "Unauthorized"}
+	ErrForbidden     = &BusinessError{Code: 403, Message: "Forbidden"}
 	ErrNotFound      = &BusinessError{Code: 404, Message: "Resource not found"}
 	ErrDuplicate     = &BusinessError{Code: 409, Message: "Resource already exists"}
 	ErrForeignKey    = &BusinessError{Code: 400, Message: "Referenced resource does not exist"}
