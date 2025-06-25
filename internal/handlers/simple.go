@@ -24,18 +24,7 @@ func Status(c *gin.Context) {
 // Faculty handlers
 func CreateFaculty(c *gin.Context) {
 	var faculty models.Faculty
-	
-	if err := c.ShouldBindJSON(&faculty); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := s.CreateResource(&faculty); err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, faculty)
+	createResource(c, &faculty)
 }
 
 func GetFaculties(c *gin.Context) {
@@ -57,17 +46,7 @@ func DeleteFaculty(c *gin.Context) {
 func CreateLevel(c *gin.Context) {
 	var level models.Level
 
-	if err := c.ShouldBindJSON(&level); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := s.CreateResource(&level); err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, level)
+	createResource(c, &level)
 }
 
 func GetLevels(c *gin.Context) {
@@ -88,18 +67,7 @@ func DeleteLevel(c *gin.Context) {
 // Department handlers
 func CreateDepartment(c *gin.Context) {
 	var department models.Department
-	
-	if err := c.ShouldBindJSON(&department); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := s.CreateResource(&department); err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, department)
+	createResource(c, &department)
 }
 
 func GetDepartments(c *gin.Context) {
@@ -120,17 +88,7 @@ func DeleteDepartment(c *gin.Context) {
 func CreateSession(c *gin.Context) {
 	var session models.Session
 
-	if err := c.ShouldBindJSON(&session); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := s.CreateResource(&session); err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, session)
+	createResource(c, &session)
 }
 
 func GetSessions(c *gin.Context) {
@@ -211,4 +169,18 @@ func deleteByStringID(c *gin.Context, resource interface{}, resourceType string)
 	}
 
 	utils.SuccessResponse(c, gin.H{"message": resourceType + " deleted successfully"})
+}
+
+func createResource(c *gin.Context, resource interface{}) {
+	if err := c.ShouldBindJSON(resource); err != nil {
+		utils.HandleValidationError(c, err)
+		return
+	}
+
+	if err := s.CreateResource(resource); err != nil {
+		utils.HandleDatabaseError(c, err)
+		return
+	}
+
+	utils.SuccessResponse(c, resource)
 }
