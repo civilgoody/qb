@@ -10,6 +10,7 @@
 /qb # if you build your main executable in the root
 /bin/
 /dist/ # Common for distribution builds
+.cursor/
 
 # Dependency directories
 # vendor/ # Uncomment if you're explicitly vendoring dependencies
