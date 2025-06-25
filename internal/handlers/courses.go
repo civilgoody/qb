@@ -1,97 +1,104 @@
 package handlers
 
 import (
-	"fmt"
+	"qb/internal/services"
 	"qb/pkg/database"
 	"qb/pkg/models"
 	"qb/pkg/utils"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-func FilterCourses(c *gin.Context) {
-    dept, level, semester, handled := utils.GetCourseFilterParams(c)
-	if handled {
-		return
-	}
+var courseService *services.CourseService
 
-    var courses []models.Course
-    err := database.DB.
-        Joins("JOIN department_courses ON courses.id = department_courses.course_id").
-        Where("department_courses.department_id = ? AND courses.level_id = ? AND courses.semester = ?", 
-              dept, level, semester).
-        Find(&courses).Error
-
-    if err != nil {
-        utils.HandleDatabaseError(c, err)
-        return
-    }
-
-    utils.SuccessResponse(c, courses)
+// InitCourseService initializes the course service
+func InitCourseService() {
+	courseService = services.NewCourseService(database.DB, utils.Validator)
 }
 
-
+// CreateCourse handles course creation with business logic
 func CreateCourse(c *gin.Context) {
 	var input models.CreateCourseDTO
-
-	// Step 1: Bind and validate the DTO
-	if utils.BindAndValidate(c, &input) {
-		return
-	}
 	
-	// Step 2: Parse the course code
-	departmentCode, level, semester, err := input.ParseCourseCode()
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.HandleValidationError(c, err)
+		return
+	}
+
+	course, err := courseService.CreateCourse(input)
 	if err != nil {
-		utils.HandleError(c, utils.NewValidationError(err.Error()))
-		return
-	}
-
-	// Step 3: Validate that the department exists
-	var department models.Department
-	if err := database.DB.Where("id = ?", departmentCode).First(&department).Error; err != nil {
-		utils.HandleError(c, utils.NewValidationError("Department with code '"+departmentCode+"' does not exist"))
-		return
-	}
-
-	// Step 4: Validate that the level exists
-	var levelModel models.Level
-	if err := database.DB.Where("id = ?", level).First(&levelModel).Error; err != nil {
-		utils.HandleError(c, utils.NewValidationError("Level "+fmt.Sprintf("%d", level)+" does not exist"))
-		return
-	}
-
-	// Step 5: Create the course with parsed values (using course code as ID)
-	course := models.Course{
-		ID:          input.Code,
-		Units:       input.Units,
-		Title:       input.Title,
-		LevelID:     level,
-		Semester:    semester,
-		Description: input.Description,
-		Status:      input.Status,
-		Departments: []models.Department{department}, // Associate with the parsed department
-	}
-
-	// Step 6: Create the course in the database
-	if err := database.DB.Create(&course).Error; err != nil {
 		utils.HandleDatabaseError(c, err)
 		return
 	}
 
-	// Step 7: Return success response
 	utils.SuccessResponse(c, course)
 }
 
+// GetCourses retrieves all courses with their relationships
 func GetCourses(c *gin.Context) {
-	var courses []models.Course
-	
-	if utils.HandleGetResources(c, database.DB, &courses) {
+	courses, err := courseService.GetAllCourses()
+	if err != nil {
+		utils.HandleDatabaseError(c, err)
 		return
 	}
+
+	utils.SuccessResponse(c, courses)
 }
 
-func DeleteCourse(c *gin.Context) {
-	if utils.DeleteResourceByStringID(c, database.DB, "id", "Course", &models.Course{}) {
+// FilterCourses handles course filtering by department, level, and semester
+func FilterCourses(c *gin.Context) {
+	dept, level, semester, ok := parseFilterParams(c)
+	if !ok {
 		return
 	}
+
+	courses, err := courseService.FilterCourses(dept, level, semester)
+	if err != nil {
+		utils.HandleDatabaseError(c, err)
+		return
+	}
+
+	utils.SuccessResponse(c, courses)
+}
+
+// DeleteCourse handles course deletion
+func DeleteCourse(c *gin.Context) {
+	DeleteByStringID(c, &models.Course{}, "Course")
+}
+
+// Helper function to parse and validate course filter parameters
+func parseFilterParams(c *gin.Context) (dept string, level int, semester int, ok bool) {
+	dept = c.Param("dept")
+	
+	// Parse level
+	levelStr := c.Param("level")
+	var err error
+	level, err = strconv.Atoi(levelStr)
+	if err != nil {
+		utils.HandleError(c, utils.NewValidationError("level must be a valid integer"))
+		return "", 0, 0, false
+	}
+	
+	// Parse semester
+	semesterStr := c.Param("semester")
+	semester, err = strconv.Atoi(semesterStr)
+	if err != nil {
+		utils.HandleError(c, utils.NewValidationError("semester must be a valid integer"))
+		return "", 0, 0, false
+	}
+	
+	// Validate level (100, 200, 300, 400, 500)
+	if level < 100 || level > 500 || level%100 != 0 {
+		utils.HandleError(c, utils.NewValidationError("Level must be one of: 100, 200, 300, 400, 500"))
+		return "", 0, 0, false
+	}
+	
+	// Validate semester (1 or 2)
+	if semester < 1 || semester > 2 {
+		utils.HandleError(c, utils.NewValidationError("Semester must be 1 or 2"))
+		return "", 0, 0, false
+	}
+	
+	return dept, level, semester, true
 }

@@ -81,7 +81,7 @@ func GetDepartments(c *gin.Context) {
 }
 
 func DeleteDepartment(c *gin.Context) {
-	deleteByStringID(c, &models.Department{}, "Department")
+	DeleteByStringID(c, &models.Department{}, "Department")
 }
 
 // Session handlers
@@ -103,7 +103,7 @@ func GetSessions(c *gin.Context) {
 }
 
 func DeleteSession(c *gin.Context) {
-	deleteByStringID(c, &models.Session{}, "Session")
+	DeleteByStringID(c, &models.Session{}, "Session")
 }
 
 
@@ -154,7 +154,7 @@ func deleteByID(c *gin.Context, resource interface{}, resourceType string) {
 	utils.SuccessResponse(c, gin.H{"message": resourceType + " deleted successfully"})
 }
 
-func deleteByStringID(c *gin.Context, resource interface{}, resourceType string) {
+func DeleteByStringID(c *gin.Context, resource interface{}, resourceType string) {
 	id := c.Param("id")
 
 	rowsAffected, err := s.DeleteResourceByStringID(id, resource)
