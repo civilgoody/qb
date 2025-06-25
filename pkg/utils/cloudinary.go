@@ -3,8 +3,8 @@ package utils
 import (
 	"context"
 	"fmt"
+	"log"
 	"mime/multipart"
-	"os"
 	"strings"
 	"time"
 
@@ -15,19 +15,15 @@ import (
 var CloudinaryClient *cloudinary.Cloudinary
 
 // InitCloudinary initializes the Cloudinary client using environment variables
-func InitCloudinary() error {
-	cloudinaryURL := os.Getenv("CLOUDINARY_URL")
-	if cloudinaryURL == "" {
-		return fmt.Errorf("CLOUDINARY_URL environment variable not set")
-	}
+func InitCloudinary() {
+	cloudinaryURL := GetEnvFatal("CLOUDINARY_URL")
 
 	cld, err := cloudinary.NewFromURL(cloudinaryURL)
 	if err != nil {
-		return fmt.Errorf("failed to initialize Cloudinary: %w", err)
+		log.Fatalf("Failed to initialize Cloudinary: %v", err)
 	}
 
 	CloudinaryClient = cld
-	return nil
 }
 
 // UploadFileToTemp uploads a single image file to temporary folder with request-based tagging

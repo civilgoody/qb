@@ -9,24 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func main() {
-
-	// Load .env file once at application startup
+func init() {
 	utils.LoadDotEnv()
-
-	// Initialize Cloudinary
-	if err := utils.InitCloudinary(); err != nil {
-		log.Fatalf("Failed to initialize Cloudinary: %v", err)
-	}
-
-	// Connect to the database
+	utils.InitJwt()
+	utils.InitCloudinary()
 	database.ConnectDB()
-
-	// Initialize request tracker with database connection
 	utils.InitRequestTracker(database.DB)
-
-	// Initialize rate limiters
 	utils.InitRateLimiters()
+}
+
+func main() {
 
 	// Use gin.New() instead of gin.Default() to have full control over middleware
 	r := gin.New()
