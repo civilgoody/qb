@@ -17,8 +17,15 @@ func init() {
 	database.ConnectDB()
 	utils.InitRequestTracker(database.DB)
 	utils.InitRateLimiters()
+	
+	// Initialize shared response helper first
+	handlers.InitResponseHelper()
+	
+	// Then initialize all services
 	handlers.InitGenericService()
 	handlers.InitCourseService()
+	handlers.InitUploadService()
+	handlers.InitQuestionService()
 }
 
 func main() {
