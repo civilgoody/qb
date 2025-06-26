@@ -82,3 +82,10 @@ type AuthResponse struct {
 type RefreshTokenDTO struct {
 	RefreshToken string `json:"refreshToken" binding:"required" validate:"required"`
 }
+
+// CourseFilterDTO is the DTO for filtering courses
+type CourseFilterDTO struct {
+	Dept     string `uri:"dept" validate:"required,min=2,max=10"`
+	Level    int    `uri:"level" validate:"required,oneof=100 200 300 400 500"`
+	Semester int    `uri:"semester" validate:"required,oneof=1 2"`
+}
