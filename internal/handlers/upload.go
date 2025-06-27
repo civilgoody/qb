@@ -1,14 +1,20 @@
 package handlers
 
 import (
-	"fmt"
-	"mime/multipart"
+	"qb/internal/services"
+	"qb/pkg/database"
 	"qb/pkg/models"
 	"qb/pkg/utils"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 )
+
+var uploadService *services.UploadService
+
+// InitUploadService initializes the upload service
+func InitUploadService() {
+	uploadService = services.NewUploadService(database.DB, utils.Validator)
+}
 
 // UploadImages handles the image pre-upload endpoint
 func UploadImages(c *gin.Context) {
@@ -18,104 +24,58 @@ func UploadImages(c *gin.Context) {
 	// Parse multipart form (this is critical for file uploads!)
 	err := c.Request.ParseMultipartForm(32 << 20) // 32MB max memory
 	if err != nil {
-		utils.HandleValidationError(c, fmt.Errorf("failed to parse multipart form: %w", err))
+		Res.Invalid(c, err)
 		return
 	}
 
 	// Get files from form
 	form := c.Request.MultipartForm
 	if form == nil {
-		utils.HandleError(c, utils.NewValidationError("No multipart form data received"))
+		Res.Invalid(c, "No multipart form data received")
 		return
 	}
 
-	files := form.File["imageFiles"] // This should match the form field name
+	files := form.File["imageFiles"]
 
-	// Validate file count
-	if len(files) == 0 {
-		utils.HandleError(c, utils.NewValidationError("No files provided"))
+	// Process uploads using service
+	response, analysis, err := uploadService.ProcessImageUploads(files, requestID)
+	if err != nil {
+		Res.Send(c, nil, err)
 		return
 	}
 
-	if len(files) > 5 {
-		utils.HandleError(c, utils.NewValidationError("Maximum 5 files allowed per request"))
-		return
-	}
+	// Use helper to handle the response based on analysis
+	handleUploadResults(c, analysis, response)
+} 
 
-	// Validate each file before processing
-	for _, fileHeader := range files {
-		if err := utils.ValidateImageFile(fileHeader); err != nil {
-			utils.HandleError(c, utils.NewValidationError(fmt.Sprintf("Invalid file '%s': %s", fileHeader.Filename, err.Error())))
+// HandleUploadResults processes upload analysis and sends appropriate error/success response
+func handleUploadResults(c *gin.Context, analysis *services.UploadResultAnalysis, response interface{}) {
+	if analysis.HasErrors {
+		if analysis.SuccessfulUploads == 0 {
+			// All uploads failed - determine the primary error type
+			if len(analysis.NetworkErrors) > 0 {
+				Res.Send(c, nil, models.NewNetworkError(analysis.NetworkErrors))
+				return
+			} else if len(analysis.UploadErrors) > 0 {
+				Res.Send(c, nil, models.NewUploadError(analysis.UploadErrors))
+				return
+			}
+		} else {
+			// Partial success - some files uploaded, others failed
+			errorDetails := make(map[string]interface{})
+			if len(analysis.NetworkErrors) > 0 {
+				errorDetails["network_errors"] = analysis.NetworkErrors
+			}
+			if len(analysis.UploadErrors) > 0 {
+				errorDetails["upload_errors"] = analysis.UploadErrors
+			}
+			errorDetails["successful_uploads"] = analysis.SuccessfulUploads
+			errorDetails["total_files"] = analysis.TotalFiles
+			
+			Res.Send(c, nil, models.NewPartialUploadError(errorDetails))
 			return
 		}
 	}
 
-	// Use bounded concurrency to prevent overwhelming Cloudinary
-	const maxConcurrentUploads = 10
-	semaphore := make(chan struct{}, maxConcurrentUploads)
-	
-	results := make([]models.UploadResult, len(files))
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-
-	// Process uploads concurrently
-	for i, fileHeader := range files {
-		wg.Add(1)
-		go func(index int, file *multipart.FileHeader) {
-			defer wg.Done()
-			
-			// Acquire semaphore
-			semaphore <- struct{}{}
-			defer func() { <-semaphore }()
-
-			result := models.UploadResult{
-				OriginalFilename: file.Filename,
-			}
-
-			// Upload file to Cloudinary
-			_, publicID, err := utils.UploadFileToTemp(file, requestID)
-			if err != nil {
-				result.Error = err.Error()
-			} else {
-				result.PublicID = publicID
-			}
-
-			// Store result thread-safely
-			mu.Lock()
-			results[index] = result
-			mu.Unlock()
-		}(i, fileHeader)
-	}
-
-	// Wait for all uploads to complete
-	wg.Wait()
-
-	// Collect successful uploads for tracking
-	var successfulPublicIDs []string
-	for _, result := range results {
-		if result.Error == "" {
-			successfulPublicIDs = append(successfulPublicIDs, result.PublicID)
-		}
-	}
-
-	// Store successful uploads in request tracker
-	if len(successfulPublicIDs) > 0 {
-		if err := utils.Tracker.StoreTemporaryUpload(requestID, successfulPublicIDs); err != nil {
-			// Log the error but don't fail the upload response since files were uploaded successfully
-			fmt.Printf("Warning: Failed to store request tracking: %v\n", err)
-		}
-	}
-
-	// Analyze upload results using the helper
-	analysis := utils.AnalyzeUploadResults(results)
-
-	// Prepare response
-	response := models.UploadResponse{
-		RequestID: requestID,
-		Results:   results,
-		Success:   !analysis.HasErrors && len(successfulPublicIDs) > 0,
-	}
-
-	// Use helper to handle the response based on analysis
-	utils.HandleUploadResults(c, analysis, response)
-} 
+	Res.Send(c, response, nil)
+}
