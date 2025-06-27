@@ -20,8 +20,8 @@ func main() {
 	seedFaculties()
 	seedDepartments()
 	seedLevels()
-	// seedUsers()
 	seedSessions()
+	// seedUsers()
 	// seedCourses()
 	// seedQuestions()
 
