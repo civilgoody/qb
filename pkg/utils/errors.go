@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"qb/pkg/models"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -113,77 +112,8 @@ func NewPartialUploadError(details interface{}) error {
 	}
 }
 
-// UploadResult represents the result of a single file upload
-type UploadResultAnalysis struct {
-	HasErrors           bool
-	NetworkErrors       []string
-	UploadErrors        []string
-	SuccessfulUploads   int
-	TotalFiles          int
-}
-
-// AnalyzeUploadResults categorizes upload errors and determines appropriate response
-func AnalyzeUploadResults(results []models.UploadResult) *UploadResultAnalysis {
-	analysis := &UploadResultAnalysis{
-		NetworkErrors: make([]string, 0),
-		UploadErrors:  make([]string, 0),
-		TotalFiles:    len(results),
-	}
-
-	for _, result := range results {
-		errorMsg := result.Error
-		if errorMsg != "" {
-			analysis.HasErrors = true
-			filename := result.OriginalFilename
-			
-			// Categorize the error type
-			if isNetworkError(result.Error) {
-				analysis.NetworkErrors = append(analysis.NetworkErrors, fmt.Sprintf("%s: %s", filename, errorMsg))
-			} else {
-				analysis.UploadErrors = append(analysis.UploadErrors, fmt.Sprintf("%s: %s", filename, errorMsg))
-			}
-		} else {
-			analysis.SuccessfulUploads++
-		}
-	}
-
-	return analysis
-}
-
-// HandleUploadResults processes upload analysis and sends appropriate error/success response
-func HandleUploadResults(c *gin.Context, analysis *UploadResultAnalysis, response interface{}) {
-	if analysis.HasErrors {
-		if analysis.SuccessfulUploads == 0 {
-			// All uploads failed - determine the primary error type
-			if len(analysis.NetworkErrors) > 0 {
-				HandleError(c, NewNetworkError(analysis.NetworkErrors))
-				return
-			} else if len(analysis.UploadErrors) > 0 {
-				HandleError(c, NewUploadError(analysis.UploadErrors))
-				return
-			}
-		} else {
-			// Partial success - some files uploaded, others failed
-			errorDetails := make(map[string]interface{})
-			if len(analysis.NetworkErrors) > 0 {
-				errorDetails["network_errors"] = analysis.NetworkErrors
-			}
-			if len(analysis.UploadErrors) > 0 {
-				errorDetails["upload_errors"] = analysis.UploadErrors
-			}
-			errorDetails["successful_uploads"] = analysis.SuccessfulUploads
-			errorDetails["total_files"] = analysis.TotalFiles
-			
-			HandleError(c, NewPartialUploadError(errorDetails))
-			return
-		}
-	}
-
-	SuccessResponse(c, response)
-}
-
 // isNetworkError checks if an error message indicates a network-related issue
-func isNetworkError(errorMsg string) bool {
+func IsNetworkError(errorMsg string) bool {
 	networkKeywords := []string{
 		"TLS handshake timeout",
 		"timeout",
