@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"qb/pkg/models"
-
+	"strconv"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
@@ -50,23 +50,24 @@ func (s *ErrorService) Db(err error, resourceContext ...string) error {
 }
 
 // ProcessValidationError handles validation errors
-func (s *ErrorService) Invalid(err error) error {
+func (s *ErrorService) Invalid(err interface{}) error {
 	if validationErrors, ok := err.(validator.ValidationErrors); ok {
 		details := s.formatValidationErrors(validationErrors)
 		return models.NewValidationError(details)
+	} else if err, ok := err.(error); ok {
+		return models.NewValidationError(err.Error())
 	}
-	return models.NewValidationError(err.Error())
+	return models.NewValidationError(err)
 }
 
 // GetIDFromParam extracts integer ID from URL param
-// func (s *ErrorService) GetIDFromParam(c *gin.Context, paramName string) (int, error) {
-// 	idStr := c.Param(paramName)
-// 	id, err := strconv.Atoi(idStr)
-// 	if err != nil {
-// 		return 0, models.NewValidationError(fmt.Sprintf("%s must be a valid integer", paramName))
-// 	}
-// 	return id, nil
-// }
+func (s *ErrorService) GetIntId(idStr string, paramName string) (int, error) {
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return 0, models.NewValidationError(paramName + " must be a valid integer")
+	}
+	return id, nil
+}
 
 // formatValidationErrors formats validator errors - ultra simple
 func (s *ErrorService) formatValidationErrors(errors validator.ValidationErrors) map[string]string {
