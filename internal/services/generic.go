@@ -9,57 +9,101 @@ import (
 
 // GenericService handles basic CRUD operations for simple resources
 type GenericService struct {
-	DB        *gorm.DB
-	Validator *validator.Validate
+	db       *gorm.DB
+	validate *validator.Validate
+	err      *ErrorService
 }
 
 // NewGenericService creates a new Generic service instance
-func NewGenericService(db *gorm.DB, validator *validator.Validate) *GenericService {
+func NewGenericService(db *gorm.DB, validate *validator.Validate) *GenericService {
 	return &GenericService{
-		DB:        db,
-		Validator: validator,
+		db:       db,
+		validate: validate,
+		err:      NewErrorService(),
 	}
 }
 
-// Pure business logic methods
-
 // CreateResource creates a new resource in the database
 func (s *GenericService) CreateResource(resource interface{}) error {
-	if err := s.Validator.Struct(resource); err != nil {
-		return err
+	if err := s.validate.Struct(resource); err != nil {
+		return s.err.Invalid(err)
 	}
 
-	return s.DB.Create(resource).Error
+	if err := s.db.Create(resource).Error; err != nil {
+		return s.err.Db(err)
+	}
+
+	return nil
 }
 
 // GetAllResources retrieves all resources of a given type
 func (s *GenericService) GetAllResources(resources interface{}) error {
-	return s.DB.Find(resources).Error
+	if err := s.db.Find(resources).Error; err != nil {
+		return s.err.Db(err)
+	}
+	return nil
 }
 
+// GetResourceByID gets a resource by integer ID
 func (s *GenericService) GetResourceByID(id int, resource interface{}) error {
-	return s.DB.First(resource, id).Error
+	if err := s.db.First(resource, id).Error; err != nil {
+		return s.err.Db(err)
+	}
+	return nil
 }
 
+// GetResourceByStringID gets a resource by string ID
 func (s *GenericService) GetResourceByStringID(id string, resource interface{}) error {
-	return s.DB.Where("id = ?", id).First(resource).Error
+	if err := s.db.Where("id = ?", id).First(resource).Error; err != nil {
+		return s.err.Db(err)
+	}
+	return nil
 }
 
-// DeleteResourceByID deletes a resource by its integer ID
-func (s *GenericService) DeleteResourceByID(id int, resource interface{}) (int64, error) {
-	result := s.DB.Delete(resource, id)
-	return result.RowsAffected, result.Error
+// DeleteResource deletes a resource by ID (handles both int and string IDs)
+func (s *GenericService) DeleteResource(id interface{}, resource interface{}) error {
+	var result *gorm.DB
+		
+	switch v := id.(type) {
+	case int:
+		result = s.db.Delete(resource, v)
+	case string:
+		result = s.db.Delete(resource, "id = ?", v)
+	default:
+		return s.err.Invalid("ID must be either int or string")
+	}
+	
+	if result.Error != nil {
+		return s.err.Db(result.Error)
+	}
+	
+	if result.RowsAffected == 0 {
+		return models.ErrNotFound
+	}
+	
+	return nil
 }
 
-// DeleteResourceByStringID deletes a resource by its string ID
-func (s *GenericService) DeleteResourceByStringID(id string, resource interface{}) (int64, error) {
-	result := s.DB.Delete(resource, "id = ?", id)
-	return result.RowsAffected, result.Error
-}
+// Legacy methods - keeping for backward compatibility during transition
+// func (s *GenericService) DeleteResourceByID(id int, resource interface{}) (int64, error) {
+// 	if err := s.DeleteResource(id, resource); err != nil {
+// 		return 0, err
+// 	}
+// 	return 1, nil // Simplified - we know it succeeded if no error
+// }
+
+// func (s *GenericService) DeleteResourceByStringID(id string, resource interface{}) (int64, error) {
+// 	if err := s.DeleteResource(id, resource); err != nil {
+// 		return 0, err
+// 	}
+// 	return 1, nil // Simplified - we know it succeeded if no error
+// }
 
 // GetDepartmentsWithFaculty retrieves all departments with their faculty preloaded
 func (s *GenericService) GetDepartmentsWithFaculty() ([]models.Department, error) {
 	var departments []models.Department
-	err := s.DB.Preload("Faculty").Find(&departments).Error
-	return departments, err
+	if err := s.db.Preload("Faculty").Find(&departments).Error; err != nil {
+		return nil, s.err.Db(err)
+	}
+	return departments, nil
 } 

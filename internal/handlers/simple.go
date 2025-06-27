@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"qb/internal/services"
 	"qb/pkg/database"
 	"qb/pkg/models"
@@ -18,169 +19,130 @@ func InitGenericService() {
 }
 
 func Status(c *gin.Context) {
-	utils.SuccessResponse(c, gin.H{"message": "Welcome to the Qb API"})
+	Res.Send(c, gin.H{"message": "Welcome to the Qb API"}, nil)
 }
 
 // Faculty handlers
 func CreateFaculty(c *gin.Context) {
 	var faculty models.Faculty
-	createResource(c, &faculty)
+	if err := c.ShouldBindJSON(&faculty); err != nil {
+		Res.Invalid(c, err)
+		return
+	}
+
+	err := s.CreateResource(&faculty)
+	Res.Created(c, faculty, err)
 }
 
 func GetFaculties(c *gin.Context) {
 	var faculties []models.Faculty
-	
-	if err := s.GetAllResources(&faculties); err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, faculties)
+	err := s.GetAllResources(&faculties)
+	Res.Send(c, faculties, err)
 }
 
 func DeleteFaculty(c *gin.Context) {
-	deleteByID(c, &models.Faculty{}, "Faculty")
+	deleteResourceByIntID(c, &models.Faculty{}, "Faculty")
 }
 
 // Level handlers
 func CreateLevel(c *gin.Context) {
 	var level models.Level
+	if err := c.ShouldBindJSON(&level); err != nil {
+		Res.Invalid(c, err)
+		return
+	}
 
-	createResource(c, &level)
+	err := s.CreateResource(&level)
+	Res.Created(c, level, err)
 }
 
 func GetLevels(c *gin.Context) {
 	var levels []models.Level
-	
-	if err := s.GetAllResources(&levels); err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, levels)
+	err := s.GetAllResources(&levels)
+	Res.Send(c, levels, err)
 }
 
 func DeleteLevel(c *gin.Context) {
-	deleteByID(c, &models.Level{}, "Level")
+	deleteResourceByIntID(c, &models.Level{}, "Level")
 }
 
 // Department handlers
 func CreateDepartment(c *gin.Context) {
 	var department models.Department
-	createResource(c, &department)
+	if err := c.ShouldBindJSON(&department); err != nil {
+		Res.Invalid(c, err)
+		return
+	}
+
+	err := s.CreateResource(&department)
+	Res.Created(c, department, err)
 }
 
 func GetDepartments(c *gin.Context) {
 	departments, err := s.GetDepartmentsWithFaculty()
-	if err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, departments)
+	Res.Send(c, departments, err)
 }
 
 func DeleteDepartment(c *gin.Context) {
-	DeleteByStringID(c, &models.Department{}, "Department")
+	deleteResourceByStringID(c, &models.Department{}, "Department")
 }
 
 // Session handlers
 func CreateSession(c *gin.Context) {
 	var session models.Session
+	if err := c.ShouldBindJSON(&session); err != nil {
+		Res.Invalid(c, err)
+		return
+	}
 
-	createResource(c, &session)
+	err := s.CreateResource(&session)
+	Res.Created(c, session, err)
 }
 
 func GetSessions(c *gin.Context) {
 	var sessions []models.Session
-
-	if err := s.GetAllResources(&sessions); err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, sessions)
+	err := s.GetAllResources(&sessions)
+	Res.Send(c, sessions, err)
 }
 
 func DeleteSession(c *gin.Context) {
-	DeleteByStringID(c, &models.Session{}, "Session")
+	// deleteResourceByStringID(c, &models.Session{}, "Session")
 }
-
 
 // Request handlers
 func GetRequests(c *gin.Context) {
 	var requests []models.TemporaryUpload
+	err := s.GetAllResources(&requests)
+	Res.Send(c, requests, err)
+}
 
-	if err := s.GetAllResources(&requests); err != nil {
-		utils.HandleDatabaseError(c, err)
+// Helper functions
+
+// deleteResourceByIntID handles deletion for resources with integer IDs
+func deleteResourceByIntID(c *gin.Context, resource interface{}, resourceName string) {
+	id, err := parseIntID(c, "id")
+	if err != nil {
+		Res.Invalid(c, err)
 		return
 	}
 
-	utils.SuccessResponse(c, requests)
+	err = s.DeleteResource(id, resource)
+	Res.Send(c, nil, err, resourceName+" deleted successfully")
 }
 
-/*
-**	Helper functions
-*/
+// deleteResourceByStringID handles deletion for resources with string IDs  
+func deleteResourceByStringID(c *gin.Context, resource interface{}, resourceName string) {
+	id := c.Param("id")
+	err := s.DeleteResource(id, resource)
+	Res.Send(c, nil, err, resourceName+" deleted successfully")
+}
 
-// Helper function to parse integer ID from gin context
-func parseIntIDFromParam(c *gin.Context, paramName string) (int, bool) {
+// parseIntID parses integer ID from gin context parameter
+func parseIntID(c *gin.Context, paramName string) (int, error) {
 	idStr := c.Param(paramName)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.HandleError(c, utils.NewValidationError(paramName+" must be a valid integer"))
-		return 0, false
+		return 0, fmt.Errorf(paramName + " must be a valid integer")
 	}
-	return id, true
-}
-
-func deleteByID(c *gin.Context, resource interface{}, resourceType string) {
-	id, ok := parseIntIDFromParam(c, "id")
-	if !ok {
-		return
-	}
-
-	rowsAffected, err := s.DeleteResourceByID(id, resource)
-	if err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	if rowsAffected == 0 {
-		utils.HandleError(c, utils.ErrNotFound)
-		return
-	}
-
-	utils.SuccessResponse(c, gin.H{"message": resourceType + " deleted successfully"})
-}
-
-func DeleteByStringID(c *gin.Context, resource interface{}, resourceType string) {
-	id := c.Param("id")
-
-	rowsAffected, err := s.DeleteResourceByStringID(id, resource)
-	if err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	if rowsAffected == 0 {
-		utils.HandleError(c, utils.ErrNotFound)
-		return
-	}
-
-	utils.SuccessResponse(c, gin.H{"message": resourceType + " deleted successfully"})
-}
-
-func createResource(c *gin.Context, resource interface{}) {
-	if err := c.ShouldBindJSON(resource); err != nil {
-		utils.HandleValidationError(c, err)
-		return
-	}
-
-	if err := s.CreateResource(resource); err != nil {
-		utils.HandleDatabaseError(c, err)
-		return
-	}
-
-	utils.SuccessResponse(c, resource)
+	return id, nil
 }
