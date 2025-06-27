@@ -106,7 +106,7 @@ func GetSessions(c *gin.Context) {
 }
 
 func DeleteSession(c *gin.Context) {
-	// deleteResourceByStringID(c, &models.Session{}, "Session")
+	deleteResourceByStringID(c, &models.Session{}, "Session")
 }
 
 // Request handlers

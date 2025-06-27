@@ -84,21 +84,6 @@ func (s *GenericService) DeleteResource(id interface{}, resource interface{}) er
 	return nil
 }
 
-// Legacy methods - keeping for backward compatibility during transition
-// func (s *GenericService) DeleteResourceByID(id int, resource interface{}) (int64, error) {
-// 	if err := s.DeleteResource(id, resource); err != nil {
-// 		return 0, err
-// 	}
-// 	return 1, nil // Simplified - we know it succeeded if no error
-// }
-
-// func (s *GenericService) DeleteResourceByStringID(id string, resource interface{}) (int64, error) {
-// 	if err := s.DeleteResource(id, resource); err != nil {
-// 		return 0, err
-// 	}
-// 	return 1, nil // Simplified - we know it succeeded if no error
-// }
-
 // GetDepartmentsWithFaculty retrieves all departments with their faculty preloaded
 func (s *GenericService) GetDepartmentsWithFaculty() ([]models.Department, error) {
 	var departments []models.Department
