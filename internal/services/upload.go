@@ -6,42 +6,23 @@ import (
 	"qb/pkg/models"
 	"qb/pkg/utils"
 	"sync"
-
-	"github.com/go-playground/validator/v10"
-	"gorm.io/gorm"
 )
 
-// UploadService handles upload-specific business logic
-type UploadService struct {
-	db       *gorm.DB
-	validate *validator.Validate
-	err      *ErrorService
-}
-
-// NewUploadService creates a new upload service instance
-func NewUploadService(db *gorm.DB, validate *validator.Validate) *UploadService {
-	return &UploadService{
-		db:       db,
-		validate: validate,
-		err:      NewErrorService(),
-	}
-}
-
 // ProcessImageUploads handles the core logic for uploading multiple images
-func (s *UploadService) ProcessImageUploads(files []*multipart.FileHeader, requestID string) (models.UploadResponse, *UploadResultAnalysis, error) {
+func ProcessImageUploads(files []*multipart.FileHeader, requestID string) (models.UploadResponse, *UploadResultAnalysis, error) {
 	// Validate file count
 	if len(files) == 0 {
-		return models.UploadResponse{}, nil, s.err.Invalid("No files provided")
+		return models.UploadResponse{}, nil, errS.Invalid("No files provided")
 	}
 
 	if len(files) > 5 {
-		return models.UploadResponse{}, nil, s.err.Invalid("Maximum 5 files allowed per request")
+		return models.UploadResponse{}, nil, errS.Invalid("Maximum 5 files allowed per request")
 	}
 
 	// Validate each file before processing
 	for _, fileHeader := range files {
-		if err := utils.ValidateImageFile(fileHeader); err != nil {
-			return models.UploadResponse{}, nil, s.err.Invalid(fmt.Sprintf("Invalid file '%s': %s", fileHeader.Filename, err.Error()))
+		if err := ValidateImageFile(fileHeader); err != nil {
+			return models.UploadResponse{}, nil, errS.Invalid(fmt.Sprintf("Invalid file '%s': %s", fileHeader.Filename, err.Error()))
 		}
 	}
 
@@ -68,7 +49,7 @@ func (s *UploadService) ProcessImageUploads(files []*multipart.FileHeader, reque
 			}
 
 			// Upload file to Cloudinary
-			_, publicID, err := utils.UploadFileToTemp(file, requestID)
+			_, publicID, err := UploadFileToTemp(file, requestID)
 			if err != nil {
 				result.Error = err.Error()
 			} else {
@@ -95,14 +76,14 @@ func (s *UploadService) ProcessImageUploads(files []*multipart.FileHeader, reque
 
 	// Store successful uploads in request tracker
 	if len(successfulPublicIDs) > 0 {
-		if err := utils.Tracker.StoreTemporaryUpload(requestID, successfulPublicIDs); err != nil {
+		if err := StoreTemporaryUpload(requestID, successfulPublicIDs); err != nil {
 			// Log the error but don't fail the upload response since files were uploaded successfully
 			fmt.Printf("Warning: Failed to store request tracking: %v\n", err)
 		}
 	}
 
 	// Analyze upload results - do this only once here
-	analysis := s.AnalyzeUploadResults(results)
+	analysis := AnalyzeUploadResults(results)
 
 	// Prepare response
 	response := models.UploadResponse{
@@ -123,7 +104,7 @@ type UploadResultAnalysis struct {
 }
 
 // AnalyzeUploadResults categorizes upload errors and determines appropriate response
-func (s *UploadService) AnalyzeUploadResults(results []models.UploadResult) *UploadResultAnalysis {
+func AnalyzeUploadResults(results []models.UploadResult) *UploadResultAnalysis {
 	analysis := &UploadResultAnalysis{
 		NetworkErrors: make([]string, 0),
 		UploadErrors:  make([]string, 0),

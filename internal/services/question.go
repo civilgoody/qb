@@ -3,37 +3,21 @@ package services
 import (
 	"fmt"
 	"qb/pkg/models"
-	"qb/pkg/utils"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
 
-// QuestionService handles question-specific business logic
-type QuestionService struct {
-	db       *gorm.DB
-	validate *validator.Validate
-	err      *ErrorService
-}
-
-// NewQuestionService creates a new question service instance
-func NewQuestionService(db *gorm.DB, validate *validator.Validate) *QuestionService {
-	return &QuestionService{
-		db:       db,
-		validate: validate,
-		err:      NewErrorService(),
-	}
-}
+// Question service functions using package-level dependencies
 
 // GetQuestions retrieves questions with optional filtering
-func (s *QuestionService) GetQuestions(courseID, sessionID, questionType string, page, limit int) ([]models.Question, error) {
+func GetQuestions(courseID, sessionID, questionType string, page, limit int) ([]models.Question, error) {
 	var questions []models.Question
 	
-	query := s.db
+	query := db
 	
 	// Add filtering for approved questions only (public endpoint)
 	// query = query.Where("approved = ?", true)
@@ -57,50 +41,50 @@ func (s *QuestionService) GetQuestions(courseID, sessionID, questionType string,
 	offset := (page - 1) * limit
 	
 	if err := query.Offset(offset).Limit(limit).Find(&questions).Error; err != nil {
-		return nil, s.err.Db(err)
+		return nil, errS.Db(err)
 	}
 
 	return questions, nil
 }
 
 // GetQuestionByID retrieves a single question by ID and increments view count
-func (s *QuestionService) GetQuestionByID(id string) (*models.Question, error) {
+func GetQuestionByID(id string) (*models.Question, error) {
 	var question models.Question
-	if err := s.db.Preload("Course").Preload("Session").Preload("Uploader").
+	if err := db.Preload("Course").Preload("Session").Preload("Uploader").
 		Where("id = ? AND approved = ?", id, true).First(&question).Error; err != nil {
-		return nil, s.err.Db(err, "Question")
+		return nil, errS.Db(err, "Question")
 	}
 	
 	// Increment view count
-	s.db.Model(&question).Update("views", gorm.Expr("views + 1"))
+	db.Model(&question).Update("views", gorm.Expr("views + 1"))
 	
 	return &question, nil
 }
 
 // CreateQuestion handles question creation with image finalization
-func (s *QuestionService) CreateQuestion(input models.CreateQuestionDTO, userID string) (*models.Question, string, bool, error) {
+func CreateQuestion(input models.CreateQuestionDTO, userID string) (*models.Question, string, bool, error) {
 	// Validate the DTO
-	if err := s.validate.Struct(input); err != nil {
-		return nil, "", false, s.err.Invalid(err)
+	if err := valS.Struct(input); err != nil {
+		return nil, "", false, errS.Invalid(err)
 	}
 
 	// Validate course and session existence
-	if err := s.validateCourseAndSession(input.CourseID, input.SessionID); err != nil {
+	if err := validateCourseAndSession(input.CourseID, input.SessionID); err != nil {
 		return nil, "", false, err
 	}
 
 	// Process upload results and get temp public IDs
-	tempPublicIDs, err := s.processUploadResults(input.UploadResults)
+	tempPublicIDs, err := processUploadResults(input.UploadResults)
 	if err != nil {
 		return nil, "", false, err
 	}
 
 	// Generate question ID and process images
-	questionID := s.generateQuestionID(input.CourseID, input.SessionID, input.Type)
-	finalImageURLs, processingStatus := s.processQuestionImages(tempPublicIDs, questionID)
+	questionID := generateQuestionID(input.CourseID, input.SessionID, input.Type)
+	finalImageURLs, processingStatus := processQuestionImages(tempPublicIDs, questionID)
 
 	// Create or update the question
-	question, message, created, err := s.createOrUpdateQuestion(questionID, input, finalImageURLs, processingStatus, userID)
+	question, message, created, err := createOrUpdateQuestion(questionID, input, finalImageURLs, processingStatus, userID)
 	if err != nil {
 		return nil, "", false, err
 	}
@@ -109,22 +93,22 @@ func (s *QuestionService) CreateQuestion(input models.CreateQuestionDTO, userID 
 }
 
 // validateCourseAndSession validates that the course and session exist
-func (s *QuestionService) validateCourseAndSession(courseID, sessionID string) error {
+func validateCourseAndSession(courseID, sessionID string) error {
 	var course models.Course
-	if err := s.db.Where("id = ?", courseID).First(&course).Error; err != nil {
-		return s.err.Db(err, "Course")
+	if err := db.Where("id = ?", courseID).First(&course).Error; err != nil {
+		return errS.Db(err, "Course")
 	}
 
 	var session models.Session
-	if err := s.db.Where("id = ?", sessionID).First(&session).Error; err != nil {
-		return s.err.Db(err, "Session")
+	if err := db.Where("id = ?", sessionID).First(&session).Error; err != nil {
+		return errS.Db(err, "Session")
 	}
 
 	return nil
 }
 
 // processUploadResults extracts and validates upload results
-func (s *QuestionService) processUploadResults(uploadResults *models.UploadResponse) ([]string, error) {
+func processUploadResults(uploadResults *models.UploadResponse) ([]string, error) {
 	var tempPublicIDs []string
 	
 	if uploadResults != nil && uploadResults.RequestID != "" {
@@ -137,9 +121,9 @@ func (s *QuestionService) processUploadResults(uploadResults *models.UploadRespo
 		
 		// Validate request ID and temporary uploads
 		if len(tempPublicIDs) > 0 {
-			isValid := utils.Tracker.ValidateAndCleanupRequest(uploadResults.RequestID, tempPublicIDs)
+			isValid := ValidateAndCleanupRequest(uploadResults.RequestID, tempPublicIDs)
 			if !isValid {
-				return nil, s.err.Invalid("Invalid or expired upload request")
+				return nil, errS.Invalid("Invalid or expired upload request")
 			}
 		}
 	}
@@ -148,36 +132,36 @@ func (s *QuestionService) processUploadResults(uploadResults *models.UploadRespo
 }
 
 // createOrUpdateQuestion creates a new question or updates an existing unapproved one
-func (s *QuestionService) createOrUpdateQuestion(questionID string, input models.CreateQuestionDTO, finalImageURLs []string, processingStatus, userID string) (*models.Question, string, bool, error) {
+func createOrUpdateQuestion(questionID string, input models.CreateQuestionDTO, finalImageURLs []string, processingStatus, userID string) (*models.Question, string, bool, error) {
 	var question models.Question
 	
 	// Check if question exists and is not approved
-	dbResult := s.db.Where("id = ? AND approved = ?", questionID, false).First(&question)
+	dbResult := db.Where("id = ? AND approved = ?", questionID, false).First(&question)
 
 	if dbResult.Error == nil {
 		// Update existing unapproved question
-		return s.updateExistingQuestion(&question, finalImageURLs)
+		return updateExistingQuestion(&question, finalImageURLs)
 	}
 
 	if dbResult.Error != gorm.ErrRecordNotFound {
-		return nil, "", false, s.err.Db(dbResult.Error)
+		return nil, "", false, errS.Db(dbResult.Error)
 	}
 
 	// Create new question
-	return s.createNewQuestion(questionID, input, finalImageURLs, processingStatus, userID)
+	return createNewQuestion(questionID, input, finalImageURLs, processingStatus, userID)
 }
 
 // updateExistingQuestion appends images to an existing unapproved question
-func (s *QuestionService) updateExistingQuestion(question *models.Question, finalImageURLs []string) (*models.Question, string, bool, error) {
+func updateExistingQuestion(question *models.Question, finalImageURLs []string) (*models.Question, string, bool, error) {
 	question.ImageLinks = append(question.ImageLinks, finalImageURLs...)
-	if err := s.db.Save(question).Error; err != nil {
-		return nil, "", false, s.err.Db(err)
+	if err := db.Save(question).Error; err != nil {
+		return nil, "", false, errS.Db(err)
 	}
 	return question, "Images appended to existing unapproved question successfully", false, nil
 }
 
 // createNewQuestion creates a new question
-func (s *QuestionService) createNewQuestion(questionID string, input models.CreateQuestionDTO, finalImageURLs []string, processingStatus, userID string) (*models.Question, string, bool, error) {
+func createNewQuestion(questionID string, input models.CreateQuestionDTO, finalImageURLs []string, processingStatus, userID string) (*models.Question, string, bool, error) {
 	question := models.Question{
 		ID:               questionID,
 		CourseID:         input.CourseID,
@@ -195,15 +179,15 @@ func (s *QuestionService) createNewQuestion(questionID string, input models.Crea
 		UploaderID:       &userID,
 	}
 
-	if err := s.db.Create(&question).Error; err != nil {
-		return nil, "", false, s.err.Db(err)
+	if err := db.Create(&question).Error; err != nil {
+		return nil, "", false, errS.Db(err)
 	}
 
 	return &question, "Question created successfully and is pending approval", true, nil
 }
 
 // processQuestionImages handles concurrent image processing with error resilience
-func (s *QuestionService) processQuestionImages(tempPublicIDs []string, questionID string) ([]string, string) {
+func processQuestionImages(tempPublicIDs []string, questionID string) ([]string, string) {
 	if len(tempPublicIDs) == 0 {
 		return []string{}, "processed"
 	}
@@ -226,7 +210,7 @@ func (s *QuestionService) processQuestionImages(tempPublicIDs []string, question
 			defer func() { <-semaphore }()
 
 			// Move file to permanent location
-			finalURL, err := utils.MoveFileToPermanent(tempPublicID, questionID)
+			finalURL, err := MoveFileToPermanent(tempPublicID, questionID)
 			
 			mu.Lock()
 			if err != nil {
@@ -264,7 +248,7 @@ func (s *QuestionService) processQuestionImages(tempPublicIDs []string, question
 }
 
 // generateQuestionID generates an ID for the question based on course, session, and type
-func (s *QuestionService) generateQuestionID(courseID string, sessionID string, questionType models.QuestionType) string {
+func generateQuestionID(courseID string, sessionID string, questionType models.QuestionType) string {
 	// Convert courseID to lowercase for the ID
 	lowerCourseID := strings.ToLower(courseID)
 
@@ -276,7 +260,7 @@ func (s *QuestionService) generateQuestionID(courseID string, sessionID string, 
 }
 
 // BuildQuestionResponse builds the response for question creation
-func (s *QuestionService) BuildQuestionResponse(question *models.Question, finalImageURLs, tempPublicIDs []string, processingStatus, message string, created bool) models.QuestionResponse {
+func BuildQuestionResponse(question *models.Question, finalImageURLs, tempPublicIDs []string, processingStatus, message string, created bool) models.QuestionResponse {
 	// Log success
 	if len(finalImageURLs) > 0 && len(tempPublicIDs) > 0 {
 		action := "created"
@@ -319,4 +303,4 @@ func GetIntQuery(value string, defaultValue int) int {
 		}
 	}
 	return defaultValue
-} 
+}
