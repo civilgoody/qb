@@ -55,7 +55,7 @@ func (h *ResponseHelper) Created(c *gin.Context, data interface{}, err error) {
 }
 
 // Invalid handles validation errors specifically
-func (h *ResponseHelper) Invalid(c *gin.Context, err error) {
+func (h *ResponseHelper) Invalid(c *gin.Context, err interface{}) {
 	validationErr := h.errorService.Invalid(err)
 	h.sendError(c, validationErr)
 }
@@ -78,3 +78,19 @@ func (h *ResponseHelper) sendError(c *gin.Context, err error) {
 		Error:   err.Error(),
 	})
 } 
+
+func (h *ResponseHelper) Unauthorized(c *gin.Context, details string) {
+	Res.sendError(c, models.ErrUnauthorized)
+}
+
+func (h *ResponseHelper) Forbidden(c *gin.Context, details string) {
+	Res.sendError(c, models.ErrForbidden)
+}
+
+func (h *ResponseHelper) NotFound(c *gin.Context, details string) {
+	Res.sendError(c, models.ErrNotFound)
+}
+
+func (h *ResponseHelper) BadRequest(c *gin.Context, details string) {
+	Res.sendError(c, models.ErrBadRequest)
+}
