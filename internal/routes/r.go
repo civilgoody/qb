@@ -2,7 +2,6 @@ package routes
 
 import (
 	"qb/internal/handlers"
-	"qb/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -48,7 +47,7 @@ func SetupRoutes(router *gin.Engine) {
 		// Course routes
 		course := v1.Group("/course")
 		{
-			course.GET("", handlers.GetCourses) // Public read
+			course.GET("", handlers.GetAllCourses) // Public read
 			course.GET("/:dept/:level/:semester", handlers.FilterCourses) // Public read
 			course.POST("", handlers.Auth.JWTAuthMiddleware(), handlers.CreateCourse) // Protected
 			course.DELETE("/:id", handlers.Auth.JWTAuthMiddleware(), handlers.DeleteCourse) // Protected
@@ -78,7 +77,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		// Image upload endpoint with rate limiting and auth
 		v1.POST("/upload-images", 
-			utils.RateLimitMiddleware(utils.UploadRateLimiter), 
+			handlers.UploadRateLimitMiddleware(), 
 			handlers.Auth.JWTAuthMiddleware(), 
 			handlers.UploadImages,
 		) // Protected

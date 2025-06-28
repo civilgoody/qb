@@ -4,7 +4,7 @@ import (
 	"log"
 	"qb/internal/handlers"
 	"qb/internal/routes"
-	"qb/pkg/database"
+	"qb/internal/services"
 	"qb/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -13,21 +13,14 @@ import (
 func init() {
 	utils.LoadDotEnv()
 	utils.InitJwt()
-	utils.InitCloudinary()
-	database.ConnectDB()
-	utils.InitRequestTracker(database.DB)
-	utils.InitRateLimiters()
 	
-	// Initialize shared helpers first
+	// Initialize all services with shared dependencies
+	services.InitServices()
+	
+	// Initialize handlers
 	handlers.InitResponseHelper()
 	handlers.InitAuthHelper()
-	
-	// Then initialize all services
-	handlers.InitGenericService()
-	handlers.InitCourseService()
-	handlers.InitAuthService()
-	handlers.InitUploadService()
-	handlers.InitQuestionService()
+	handlers.InitRateLimitServices()
 }
 
 func main() {
