@@ -17,7 +17,7 @@ func SetupRoutes(router *gin.Engine) {
 		{
 			auth.POST("/register", handlers.Register)
 			auth.POST("/login", handlers.Login)
-			auth.GET("/profile", utils.JWTAuthMiddleware(), handlers.GetProfile)
+			auth.GET("/profile", handlers.Auth.JWTAuthMiddleware(), handlers.GetProfile)
 			auth.POST("/refresh", handlers.RefreshToken)
 		}
 
@@ -25,24 +25,24 @@ func SetupRoutes(router *gin.Engine) {
 		faculty := v1.Group("/faculty")
 		{
 			faculty.GET("", handlers.GetFaculties) // Public read
-			faculty.POST("", utils.JWTAuthMiddleware(), handlers.CreateFaculty) // Protected
-			faculty.DELETE("/:id", utils.JWTAuthMiddleware(), handlers.DeleteFaculty) // Protected
+			faculty.POST("", handlers.Auth.JWTAuthMiddleware(), handlers.CreateFaculty) // Protected
+			faculty.DELETE("/:id", handlers.Auth.JWTAuthMiddleware(), handlers.DeleteFaculty) // Protected
 		}
 
 		// Level routes
 		level := v1.Group("/level")
 		{
 			level.GET("", handlers.GetLevels) // Public read
-			level.POST("", utils.JWTAuthMiddleware(), handlers.CreateLevel) // Protected
-			level.DELETE("/:id", utils.JWTAuthMiddleware(), handlers.DeleteLevel) // Protected
+			level.POST("", handlers.Auth.JWTAuthMiddleware(), handlers.CreateLevel) // Protected
+			level.DELETE("/:id", handlers.Auth.JWTAuthMiddleware(), handlers.DeleteLevel) // Protected
 		}
 
 		// Session routes
 		session := v1.Group("/session")
 		{
 			session.GET("", handlers.GetSessions) // Public read
-			session.POST("", utils.JWTAuthMiddleware(), handlers.CreateSession) // Protected
-			session.DELETE("/:id", utils.JWTAuthMiddleware(), handlers.DeleteSession) // Protected
+			session.POST("", handlers.Auth.JWTAuthMiddleware(), handlers.CreateSession) // Protected
+			session.DELETE("/:id", handlers.Auth.JWTAuthMiddleware(), handlers.DeleteSession) // Protected
 		}
 
 		// Course routes
@@ -50,16 +50,16 @@ func SetupRoutes(router *gin.Engine) {
 		{
 			course.GET("", handlers.GetCourses) // Public read
 			course.GET("/:dept/:level/:semester", handlers.FilterCourses) // Public read
-			course.POST("", utils.JWTAuthMiddleware(), handlers.CreateCourse) // Protected
-			course.DELETE("/:id", utils.JWTAuthMiddleware(), handlers.DeleteCourse) // Protected
+			course.POST("", handlers.Auth.JWTAuthMiddleware(), handlers.CreateCourse) // Protected
+			course.DELETE("/:id", handlers.Auth.JWTAuthMiddleware(), handlers.DeleteCourse) // Protected
 		}
 
 		// Department routes
 		department := v1.Group("/department")
 		{
 			department.GET("", handlers.GetDepartments) // Public read
-			department.POST("", utils.JWTAuthMiddleware(), handlers.CreateDepartment) // Protected
-			department.DELETE("/:id", utils.JWTAuthMiddleware(), handlers.DeleteDepartment) // Protected
+			department.POST("", handlers.Auth.JWTAuthMiddleware(), handlers.CreateDepartment) // Protected
+			department.DELETE("/:id", handlers.Auth.JWTAuthMiddleware(), handlers.DeleteDepartment) // Protected
 		}
 
 		// Question routes
@@ -67,19 +67,19 @@ func SetupRoutes(router *gin.Engine) {
 		{
 			question.GET("", handlers.GetQuestions) // Public read
 			question.GET("/:id", handlers.GetQuestionByID) // Public read
-			question.POST("", utils.JWTAuthMiddleware(), handlers.CreateQuestion) // Protected
+			question.POST("", handlers.Auth.JWTAuthMiddleware(), handlers.CreateQuestion) // Protected
 		}
 
 		// Request routes
 		request := v1.Group("/request")
 		{
-			request.GET("", utils.JWTAuthMiddleware(), handlers.GetRequests) // Protected
+			request.GET("", handlers.Auth.JWTAuthMiddleware(), handlers.GetRequests) // Protected
 		}
 
 		// Image upload endpoint with rate limiting and auth
 		v1.POST("/upload-images", 
 			utils.RateLimitMiddleware(utils.UploadRateLimiter), 
-			utils.JWTAuthMiddleware(), 
+			handlers.Auth.JWTAuthMiddleware(), 
 			handlers.UploadImages,
 		) // Protected
 	}
