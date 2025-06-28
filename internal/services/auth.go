@@ -4,45 +4,28 @@ import (
 	"qb/pkg/models"
 	"qb/pkg/utils"
 
-	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
 
-// AuthService handles authentication-specific business logic
-type AuthService struct {
-	db       *gorm.DB
-	validate *validator.Validate
-	err      *ErrorService
-}
-
-// NewAuthService creates a new auth service instance
-func NewAuthService(db *gorm.DB, validate *validator.Validate) *AuthService {
-	return &AuthService{
-		db:       db,
-		validate: validate,
-		err:      NewErrorService(),
-	}
-}
-
 // Register handles user registration business logic
-func (s *AuthService) Register(input models.RegisterDTO) (*models.AuthResponse, error) {
+func Register(input models.RegisterDTO) (*models.AuthResponse, error) {
 	// Validate the DTO
-	if err := s.validate.Struct(input); err != nil {
-		return nil, s.err.Invalid(err)
+	if err := valS.Struct(input); err != nil {
+		return nil, errS.Invalid(err)
 	}
 
 	// Check if user already exists
 	var existingUser models.User
-	if err := s.db.Where("email = ?", input.Email).First(&existingUser).Error; err == nil {
-		return nil, s.err.Invalid("User with this email already exists")
+	if err := db.Where("email = ?", input.Email).First(&existingUser).Error; err == nil {
+		return nil, errS.Invalid("User with this email already exists")
 	} else if err != gorm.ErrRecordNotFound {
-		return nil, s.err.Db(err)
+		return nil, errS.Db(err)
 	}
 
 	// Hash the password
 	hashedPassword, err := utils.HashPassword(input.Password)
 	if err != nil {
-		return nil, s.err.Invalid("Failed to process password")
+		return nil, errS.Invalid("Failed to process password")
 	}
 
 	// Create user
@@ -58,19 +41,19 @@ func (s *AuthService) Register(input models.RegisterDTO) (*models.AuthResponse, 
 		IsActive:     true,
 	}
 
-	if err := s.db.Create(&user).Error; err != nil {
-		return nil, s.err.Db(err)
+	if err := db.Create(&user).Error; err != nil {
+		return nil, errS.Db(err)
 	}
 
 	// Generate tokens
 	token, err := utils.GenerateToken(user.ID, user.Email, string(user.Role))
 	if err != nil {
-		return nil, s.err.Invalid("Failed to generate access token")
+		return nil, errS.Invalid("Failed to generate access token")
 	}
 
 	refreshToken, err := utils.GenerateRefreshToken(user.ID)
 	if err != nil {
-		return nil, s.err.Invalid("Failed to generate refresh token")
+		return nil, errS.Invalid("Failed to generate refresh token")
 	}
 
 	// Remove password from response
@@ -86,19 +69,19 @@ func (s *AuthService) Register(input models.RegisterDTO) (*models.AuthResponse, 
 }
 
 // Login handles user authentication business logic
-func (s *AuthService) Login(input models.LoginDTO) (*models.AuthResponse, error) {
+func Login(input models.LoginDTO) (*models.AuthResponse, error) {
 	// Validate the DTO
-	if err := s.validate.Struct(input); err != nil {
-		return nil, s.err.Invalid(err)
+	if err := valS.Struct(input); err != nil {
+		return nil, errS.Invalid(err)
 	}
 
 	// Find user by email
 	var user models.User
-	if err := s.db.Where("email = ? AND is_active = ?", input.Email, true).First(&user).Error; err != nil {
+	if err := db.Where("email = ? AND is_active = ?", input.Email, true).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, models.ErrUnauthorized
 		}
-		return nil, s.err.Db(err)
+		return nil, errS.Db(err)
 	}
 
 	// Check password
@@ -109,12 +92,12 @@ func (s *AuthService) Login(input models.LoginDTO) (*models.AuthResponse, error)
 	// Generate tokens
 	token, err := utils.GenerateToken(user.ID, user.Email, string(user.Role))
 	if err != nil {
-		return nil, s.err.Invalid("Failed to generate access token")
+		return nil, errS.Invalid("Failed to generate access token")
 	}
 
 	refreshToken, err := utils.GenerateRefreshToken(user.ID)
 	if err != nil {
-		return nil, s.err.Invalid("Failed to generate refresh token")
+		return nil, errS.Invalid("Failed to generate refresh token")
 	}
 
 	// Remove password from response
@@ -130,14 +113,14 @@ func (s *AuthService) Login(input models.LoginDTO) (*models.AuthResponse, error)
 }
 
 // GetProfile retrieves user profile by ID
-func (s *AuthService) GetProfile(userID string) (*models.User, error) {
+func GetProfile(userID string) (*models.User, error) {
 	var user models.User
-	if err := s.db.Preload("Department").Preload("Level").
+	if err := db.Preload("Department").Preload("Level").
 		Where("id = ? AND is_active = ?", userID, true).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, models.ErrNotFound
 		}
-		return nil, s.err.Db(err)
+		return nil, errS.Db(err)
 	}
 
 	// Remove password from response
@@ -147,10 +130,10 @@ func (s *AuthService) GetProfile(userID string) (*models.User, error) {
 }
 
 // RefreshToken handles token refresh business logic
-func (s *AuthService) RefreshToken(input models.RefreshTokenDTO) (string, error) {
+func RefreshToken(input models.RefreshTokenDTO) (string, error) {
 	// Validate the DTO
-	if err := s.validate.Struct(input); err != nil {
-		return "", s.err.Invalid(err)
+	if err := valS.Struct(input); err != nil {
+		return "", errS.Invalid(err)
 	}
 
 	// Validate refresh token
@@ -161,17 +144,17 @@ func (s *AuthService) RefreshToken(input models.RefreshTokenDTO) (string, error)
 
 	// Get user details
 	var user models.User
-	if err := s.db.Where("id = ? AND is_active = ?", userID, true).First(&user).Error; err != nil {
+	if err := db.Where("id = ? AND is_active = ?", userID, true).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return "", models.ErrUnauthorized
 		}
-		return "", s.err.Db(err)
+		return "", errS.Db(err)
 	}
 
 	// Generate new access token
 	newToken, err := utils.GenerateToken(user.ID, user.Email, string(user.Role))
 	if err != nil {
-		return "", s.err.Invalid("Failed to generate token")
+		return "", errS.Invalid("Failed to generate token")
 	}
 
 	return newToken, nil
