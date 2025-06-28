@@ -47,9 +47,9 @@ func CreateQuestion(c *gin.Context) {
 	}
 
 	// Get the current user ID from context
-	userID, exists := utils.GetCurrentUserID(c)
-	if !exists {
-		Res.Send(c, nil, models.ErrInternal)
+	userID, err := Auth.GetCurrentUserID(c)
+	if err != nil {
+		Res.Send(c, nil, err)
 		return
 	}
 
@@ -70,7 +70,7 @@ func CreateQuestion(c *gin.Context) {
 		created,
 	)
 
-	Res.Created(c, response, nil)
+	Res.Send(c, response, nil)
 }
 
 // Helper functions
