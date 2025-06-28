@@ -2,24 +2,15 @@ package handlers
 
 import (
 	"qb/internal/services"
-	"qb/pkg/database"
 	"qb/pkg/models"
-	"qb/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
-var uploadService *services.UploadService
-
-// InitUploadService initializes the upload service
-func InitUploadService() {
-	uploadService = services.NewUploadService(database.DB, utils.Validator)
-}
-
 // UploadImages handles the image pre-upload endpoint
 func UploadImages(c *gin.Context) {
 	// Generate request ID for tracking
-	requestID := utils.GenerateRequestID()
+	requestID := services.GenerateRequestID()
 
 	// Parse multipart form (this is critical for file uploads!)
 	err := c.Request.ParseMultipartForm(32 << 20) // 32MB max memory
@@ -38,7 +29,7 @@ func UploadImages(c *gin.Context) {
 	files := form.File["imageFiles"]
 
 	// Process uploads using service
-	response, analysis, err := uploadService.ProcessImageUploads(files, requestID)
+	response, analysis, err := services.ProcessImageUploads(files, requestID)
 	if err != nil {
 		Res.Send(c, nil, err)
 		return

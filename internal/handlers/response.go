@@ -17,7 +17,7 @@ var Res *ResponseHelper
 // InitResponseHelper initializes the shared response helper
 func InitResponseHelper() {
 	Res = &ResponseHelper{
-		errorService: services.NewErrorService(),
+		errorService: services.GetErrorService(),
 	}
 }
 
