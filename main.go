@@ -18,12 +18,14 @@ func init() {
 	utils.InitRequestTracker(database.DB)
 	utils.InitRateLimiters()
 	
-	// Initialize shared response helper first
+	// Initialize shared helpers first
 	handlers.InitResponseHelper()
+	handlers.InitAuthHelper()
 	
 	// Then initialize all services
 	handlers.InitGenericService()
 	handlers.InitCourseService()
+	handlers.InitAuthService()
 	handlers.InitUploadService()
 	handlers.InitQuestionService()
 }
@@ -32,7 +34,7 @@ func main() {
 	r := gin.New()
 	
 	r.Use(gin.Logger())
-	r.Use(utils.CustomRecovery())
+	r.Use(handlers.Auth.CustomRecovery())
 	
 	r.RedirectTrailingSlash = false
 
