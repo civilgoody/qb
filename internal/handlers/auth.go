@@ -2,19 +2,10 @@ package handlers
 
 import (
 	"qb/internal/services"
-	"qb/pkg/database"
 	"qb/pkg/models"
-	"qb/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
-
-var authService *services.AuthService
-
-// InitAuthService initializes the auth service
-func InitAuthService() {
-	authService = services.NewAuthService(database.DB, utils.Validator)
-}
 
 // Register handles user registration
 func Register(c *gin.Context) {
@@ -24,8 +15,8 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	response, err := authService.Register(input)
-	Res.Send(c, response, err)
+	response, err := services.Register(input)
+	Res.Created(c, response, err)
 }
 
 // Login handles user authentication
@@ -36,20 +27,16 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	response, err := authService.Login(input)
-	Res.Send(c, response, err)
+	response, err := services.Login(input)
+	Res.Send(c, response, err, "Login successful")
 }
 
-// GetProfile handles getting the current user's profile
+// GetProfile retrieves the authenticated user's profile
 func GetProfile(c *gin.Context) {
-	userID, err := Auth.GetCurrentUserID(c)
-	if err != nil {
-		Res.Send(c, nil, err)
-		return
-	}
+	userID := c.GetString("userID")
 
-	user, err := authService.GetProfile(userID)
-	Res.Send(c, user, err)
+	user, err := services.GetProfile(userID)
+	Res.Send(c, user, err, "Profile retrieved successfully")
 }
 
 // RefreshToken handles token refresh
@@ -60,16 +47,8 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	newToken, err := authService.RefreshToken(input)
-	if err != nil {
-		Res.Send(c, nil, err)
-		return
-	}
-
-	response := map[string]string{
-		"token": newToken,
-	}
-
-	Res.Send(c, response, nil)
+	newToken, err := services.RefreshToken(input)
+	response := gin.H{"token": newToken}
+	Res.Send(c, response, err, "Token refreshed successfully")
 } 
  

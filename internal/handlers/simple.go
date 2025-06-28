@@ -3,20 +3,11 @@ package handlers
 import (
 	"fmt"
 	"qb/internal/services"
-	"qb/pkg/database"
 	"qb/pkg/models"
-	"qb/pkg/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
-
-var s *services.GenericService
-
-// InitGenericService initializes the Generic service with database connection
-func InitGenericService() {
-	s = services.NewGenericService(database.DB, utils.Validator)
-}
 
 func Status(c *gin.Context) {
 	Res.Send(c, gin.H{"message": "Welcome to the Qb API"}, nil)
@@ -30,13 +21,13 @@ func CreateFaculty(c *gin.Context) {
 		return
 	}
 
-	err := s.CreateResource(&faculty)
+	err := services.CreateResource(&faculty)
 	Res.Created(c, faculty, err)
 }
 
 func GetFaculties(c *gin.Context) {
 	var faculties []models.Faculty
-	err := s.GetAllResources(&faculties)
+	err := services.GetAllResources(&faculties)
 	Res.Send(c, faculties, err)
 }
 
@@ -52,13 +43,13 @@ func CreateLevel(c *gin.Context) {
 		return
 	}
 
-	err := s.CreateResource(&level)
+	err := services.CreateResource(&level)
 	Res.Created(c, level, err)
 }
 
 func GetLevels(c *gin.Context) {
 	var levels []models.Level
-	err := s.GetAllResources(&levels)
+	err := services.GetAllResources(&levels)
 	Res.Send(c, levels, err)
 }
 
@@ -74,12 +65,12 @@ func CreateDepartment(c *gin.Context) {
 		return
 	}
 
-	err := s.CreateResource(&department)
+	err := services.CreateResource(&department)
 	Res.Created(c, department, err)
 }
 
 func GetDepartments(c *gin.Context) {
-	departments, err := s.GetDepartmentsWithFaculty()
+	departments, err := services.GetDepartmentsWithFaculty()
 	Res.Send(c, departments, err)
 }
 
@@ -95,13 +86,13 @@ func CreateSession(c *gin.Context) {
 		return
 	}
 
-	err := s.CreateResource(&session)
+	err := services.CreateResource(&session)
 	Res.Created(c, session, err)
 }
 
 func GetSessions(c *gin.Context) {
 	var sessions []models.Session
-	err := s.GetAllResources(&sessions)
+	err := services.GetAllResources(&sessions)
 	Res.Send(c, sessions, err)
 }
 
@@ -112,7 +103,7 @@ func DeleteSession(c *gin.Context) {
 // Request handlers
 func GetRequests(c *gin.Context) {
 	var requests []models.TemporaryUpload
-	err := s.GetAllResources(&requests)
+	err := services.GetAllResources(&requests)
 	Res.Send(c, requests, err)
 }
 
@@ -126,14 +117,14 @@ func deleteResourceByIntID(c *gin.Context, resource interface{}, resourceName st
 		return
 	}
 
-	err = s.DeleteResource(id, resource)
+	err = services.DeleteResource(id, resource)
 	Res.Send(c, nil, err, resourceName+" deleted successfully")
 }
 
 // deleteResourceByStringID handles deletion for resources with string IDs  
 func deleteResourceByStringID(c *gin.Context, resource interface{}, resourceName string) {
 	id := c.Param("id")
-	err := s.DeleteResource(id, resource)
+	err := services.DeleteResource(id, resource)
 	Res.Send(c, nil, err, resourceName+" deleted successfully")
 }
 

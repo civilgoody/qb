@@ -2,19 +2,10 @@ package handlers
 
 import (
 	"qb/internal/services"
-	"qb/pkg/database"
 	"qb/pkg/models"
-	"qb/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
-
-var questionService *services.QuestionService
-
-// InitQuestionService initializes the question service
-func InitQuestionService() {
-	questionService = services.NewQuestionService(database.DB, utils.Validator)
-}
 
 // GetQuestions handles retrieving questions with optional filtering
 func GetQuestions(c *gin.Context) {
@@ -25,7 +16,7 @@ func GetQuestions(c *gin.Context) {
 	page := services.GetIntQuery(c.Query("page"), 1)
 	limit := services.GetIntQuery(c.Query("limit"), 20)
 
-	questions, err := questionService.GetQuestions(courseID, sessionID, questionType, page, limit)
+	questions, err := services.GetQuestions(courseID, sessionID, questionType, page, limit)
 	Res.Send(c, questions, err)
 }
 
@@ -33,7 +24,7 @@ func GetQuestions(c *gin.Context) {
 func GetQuestionByID(c *gin.Context) {
 	id := c.Param("id")
 	
-	question, err := questionService.GetQuestionByID(id)
+	question, err := services.GetQuestionByID(id)
 	Res.Send(c, question, err)
 }
 
@@ -54,14 +45,14 @@ func CreateQuestion(c *gin.Context) {
 	}
 
 	// Create question using service
-	question, message, created, err := questionService.CreateQuestion(input, userID)
+	question, message, created, err := services.CreateQuestion(input, userID)
 	if err != nil {
 		Res.Send(c, nil, err)
 		return
 	}
 
 	// Build response using service
-	response := questionService.BuildQuestionResponse(
+	response := services.BuildQuestionResponse(
 		question, 
 		question.ImageLinks, 
 		extractTempPublicIDs(input.UploadResults), 
