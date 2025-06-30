@@ -1,4 +1,4 @@
-package handlers
+package middleware
 
 import (
 	"net/http"
@@ -26,12 +26,12 @@ func RateLimitMiddleware(limiter *services.RateLimitService) gin.HandlerFunc {
 	}
 }
 
-// UploadRateLimitMiddleware creates middleware for upload rate limiting
-func UploadRateLimitMiddleware() gin.HandlerFunc {
-	return RateLimitMiddleware(uploadRateLimiter)
+// UploadRateLimit creates middleware for upload rate limiting
+func UploadRateLimit() gin.HandlerFunc {
+	return RateLimitMiddleware(services.GetUploadRateLimiter())
 }
 
-// GeneralRateLimitMiddleware creates middleware for general rate limiting
-func GeneralRateLimitMiddleware() gin.HandlerFunc {
-	return RateLimitMiddleware(generalRateLimiter)
-}
+// GeneralRateLimit creates middleware for general rate limiting
+func GeneralRateLimit() gin.HandlerFunc {
+	return RateLimitMiddleware(services.GetGeneralRateLimiter())
+} 

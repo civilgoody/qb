@@ -4,6 +4,7 @@ import (
 	"log"
 	"qb/pkg/database"
 	"qb/pkg/utils"
+	"time"
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/go-playground/validator/v10"
@@ -15,10 +16,20 @@ var (
 	valS *validator.Validate
 	cldS *cloudinary.Cloudinary
 	errS *ErrorService
+	
+	// Rate limiter instances - these need to be per-handler since they have different configs
+	uploadRateLimiter   *RateLimitService
+	generalRateLimiter  *RateLimitService
 )
 
-// InitServices initializes all shared dependencies once
+// InitServices initializes all shared service dependencies once
 func InitServices() {
+	// Initialize database connection
+	db = database.DB
+	if db == nil {
+		log.Fatal("Database connection is nil")
+	}
+
 	// Initialize validator
 	valS = validator.New()
 
@@ -36,9 +47,35 @@ func InitServices() {
 
 	// Initialize error service
 	errS = NewErrorService()
-	
+
 	// Start background cleanup routines
-	StartRequestTrackerCleanup()
+    StartRequestTrackerCleanup()
+	
+	// Initialize rate limiters
+	InitRateLimiters()
+
+	log.Println("All services initialized successfully")
+}
+
+// InitRateLimiters initializes the rate limiting services
+func InitRateLimiters() {
+	uploadRateLimiter = NewRateLimitService(50, time.Hour)   // 50 uploads per hour
+	generalRateLimiter = NewRateLimitService(200, time.Hour) // 200 requests per hour
+}
+
+// GetUploadRateLimiter returns the upload rate limiter
+func GetUploadRateLimiter() *RateLimitService {
+	return uploadRateLimiter
+}
+
+// GetGeneralRateLimiter returns the general rate limiter
+func GetGeneralRateLimiter() *RateLimitService {
+	return generalRateLimiter
+}
+
+// GetErrorService returns the shared error service
+func GetErrorService() *ErrorService {
+	return errS
 }
 
 // Getter functions for external packages if needed
@@ -52,8 +89,4 @@ func GetValidator() *validator.Validate {
 
 func GetCloudinary() *cloudinary.Cloudinary {
 	return cldS
-}
-
-func GetErrorService() *ErrorService {
-	return errS
 }

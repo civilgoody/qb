@@ -2,6 +2,7 @@ package routes
 
 import (
 	"qb/internal/handlers"
+	"qb/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -77,7 +78,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		// Image upload endpoint with rate limiting and auth
 		v1.POST("/upload-images", 
-			handlers.UploadRateLimitMiddleware(), 
+			middleware.UploadRateLimit(), 
 			handlers.Auth.JWTAuthMiddleware(), 
 			handlers.UploadImages,
 		) // Protected

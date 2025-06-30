@@ -20,7 +20,6 @@ func init() {
 	// Initialize handlers
 	handlers.InitResponseHelper()
 	handlers.InitAuthHelper()
-	handlers.InitRateLimitServices()
 }
 
 func main() {
